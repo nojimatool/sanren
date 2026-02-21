@@ -98,7 +98,7 @@ html, body{
   height:100%;
   overflow:hidden;
   overscroll-behavior: none;
-  touch-action: manipulation;
+  touch-action: pan-y;
 }
 
 /* bodyは固定しない（←ここが重要） */
@@ -315,6 +315,7 @@ body{
   .acRow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   @media (orientation:portrait){
     .acRow{grid-template-columns:repeat(1,1fr);}
+    flex-shrink:0;
   }
   .acBtn{
     height:50px;border-radius:14px;
