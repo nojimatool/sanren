@@ -1,0 +1,1337 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>三連電卓（ACalcM寄せ v15-all 改 + スワイプ削除/長押し挿入）</title>
+<style>
+  :root{
+    --wood1:#c77c44;
+    --wood2:#aa6433;
+    --glass:rgba(255,255,255,.18);
+    --panel:rgba(255,255,255,.92);
+    --bd:rgba(0,0,0,.18);
+    --neg:#d92d20;
+
+    --calcW: 300px;
+    --colMinW: 260px;
+
+    --rowH: 52px;
+    --labelFS: 14px;
+
+    /* 数字表示（列内） */
+    --numMax: 30px;
+    --numMin: 12px;
+
+    /* 上段合計 */
+    --topMax: 46px;
+    --topMin: 18px;
+
+    /* キーサイズ（枠は崩さず、文字をできるだけ大きく） */
+    --gap: 10px;
+    --keyFS: 38px;      /* ベース（後でfitで縮む） */
+    --keyFSop: 40px;
+    --keyFSfunc: 36px;
+    --keyRadius: 14px;
+
+    /* キー高さ：画面に合わせて可変（被り防止） */
+    --keyH: clamp(66px, 8.4vh, 92px);
+
+    --btnGrey1: rgba(245,245,245,.95);
+    --btnGrey2: rgba(230,230,230,.92);
+    --btnOp1: rgba(235,235,235,.95);
+    --btnOp2: rgba(215,215,215,.92);
+    --btnFunc1: rgba(150,95,55,.55);
+    --btnFunc2: rgba(100,60,35,.55);
+
+    --btnUndo1: rgba(70,120,210,.85);
+    --btnUndo2: rgba(40,80,160,.85);
+    --btnRedo1: rgba(165,110,70,.80);
+    --btnRedo2: rgba(115,75,45,.80);
+
+    --tabBlue:#0b3a8a;
+
+    /* スワイプ削除 */
+    --delW: 86px;
+    --delBg: #e11d48;
+  }
+
+  /* 縦：オリジナル寄せ（1列表示＋列切替） */
+  @media (orientation:portrait){
+    :root{
+      --calcW: 340px;
+      --colMinW: 360px;
+      --rowH: 50px;
+      --keyH: clamp(64px, 7.6vh, 92px);
+      --gap: 9px;
+      --keyFS: 40px;
+      --keyFSop: 42px;
+      --keyFSfunc: 38px;
+    }
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:#121212;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",sans-serif}
+
+  .frame{height:100vh;overflow:hidden;padding:10px;max-width:1360px;margin:0 auto}
+  .app{
+    height:100%;
+    background:linear-gradient(180deg,var(--wood1),var(--wood2));
+    border-radius:20px;padding:12px;
+    display:flex;flex-direction:column;gap:10px;
+    overflow:hidden;
+  }
+
+  .topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tab{
+    min-width:92px;padding:8px 10px;border-radius:12px;
+    background:rgba(255,255,255,.55);
+    border:1px solid rgba(0,0,0,.20);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+    font-weight:900;color:var(--tabBlue);
+    text-align:center;cursor:pointer;user-select:none;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .tab.active{background:rgba(255,255,255,.86)}
+  .topRight{margin-left:auto;display:flex;gap:10px;align-items:center}
+
+  .gear{
+    width:52px;height:42px;border-radius:12px;
+    display:grid;place-items:center;cursor:pointer;user-select:none;
+    background:rgba(255,255,255,.80);
+    border:1px solid rgba(0,0,0,.22);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 3px 10px rgba(0,0,0,.10);
+    font-size:20px;font-weight:900;
+  }
+  .linkBar{display:flex;gap:8px;align-items:center}
+  .linkBtn{
+    width:64px;height:42px;border-radius:10px;
+    display:grid;place-items:center;
+    background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(230,230,230,.92));
+    border:1px solid rgba(0,0,0,.22);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
+    font-weight:1000;color:#5b2b86;cursor:pointer;user-select:none;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;
+  }
+  .linkBtn.disabled{color:#667085}
+
+  .grid{
+    flex:1; min-height:0;
+    display:grid;
+    grid-template-columns: 1fr var(--calcW);
+    gap:12px;
+    overflow:hidden;
+  }
+
+  .leftWrap{min-height:0;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+  .lists{
+    flex:1; min-height:0;
+    display:grid;
+    grid-template-columns:repeat(3, minmax(var(--colMinW), 1fr));
+    gap:10px;
+    overflow:hidden;
+  }
+  @media (orientation:portrait){
+    .lists{grid-template-columns:repeat(1, minmax(var(--colMinW), 1fr));}
+  }
+
+  .col{
+    min-width:var(--colMinW);
+    background:var(--glass);
+    border:1px solid var(--bd);
+    border-radius:16px;
+    padding:8px;
+    display:flex;flex-direction:column;gap:8px;
+    min-height:0; overflow:hidden;
+  }
+
+  .topBox{
+    background:rgba(255,255,255,.50);
+    border:1px solid rgba(0,0,0,.20);
+    border-radius:14px;
+    padding:8px 10px;
+    display:flex;align-items:center;justify-content:flex-end;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+    font-weight:1100;
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap; overflow:hidden;
+    color:#111;
+  }
+  .topBox.neg{color:var(--neg)}
+  .topSpan{display:inline-block;max-width:100%}
+
+  .panel{
+    flex:1; min-height:0;
+    background:var(--panel);
+    border:1px solid rgba(0,0,0,.12);
+    border-radius:14px;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ===== row（スワイプ削除対応：見た目は同じ） ===== */
+  .row{
+    border-bottom:1px solid #eaeaea;
+    min-height:var(--rowH);
+    position:relative;
+    overflow:hidden;
+    cursor:pointer;
+    user-select:none;
+    touch-action: pan-y; /* 縦スクロール優先 */
+    background:transparent;
+  }
+  .row:last-child{border-bottom:none}
+  .row.active{background:rgba(20,70,160,.08); outline:3px solid rgba(20,70,160,.22); outline-offset:-3px;}
+
+  .rowMain{
+  width:100%;
+  padding:8px 10px;
+  min-height:var(--rowH);
+  display:flex;flex-direction:column;justify-content:space-between;
+  gap:4px;
+
+  background:var(--panel);
+  position:relative;
+  z-index:2;
+
+  transition:transform .14s ease;
+  will-change:transform;
+}
+.row.swiped .rowMain{ transform: translateX(calc(-1 * var(--delW))); }
+
+.delBtn{
+  position:absolute;
+  right:0; top:0; bottom:0;
+  width:var(--delW);
+  border:none;
+  background:var(--delBg);
+  color:#fff;
+  font-weight:1000;
+  font-size:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+
+  opacity:0;
+  pointer-events:none;
+  z-index:1;
+}
+.row.swiped .delBtn{
+  opacity:1;
+  pointer-events:auto;
+}
+
+  .labelLine{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:18px;}
+  .label{
+    font-size:var(--labelFS);
+    font-weight:900;color:#111;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    flex:1;
+  }
+  .label.empty{color:transparent}
+  .label[contenteditable="true"]{
+    background:#fff7;border-radius:8px;padding:2px 4px;color:#111;
+  }
+
+  .numLine{
+    display:flex;align-items:flex-end;justify-content:flex-end;
+    font-weight:1100;
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+    overflow:hidden;
+    color:#111;
+    min-height:24px;
+  }
+  .numLine.neg{color:var(--neg)}
+  .numSpan{display:inline-block;max-width:100%}
+
+  .acRow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media (orientation:portrait){
+    .acRow{grid-template-columns:repeat(1,1fr);}
+  }
+  .acBtn{
+    height:50px;border-radius:14px;
+    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
+    border:1px solid rgba(0,0,0,.22);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
+    display:grid;place-items:center;
+    font-weight:1100;font-size:32px;color:#1f3a8a;
+    cursor:pointer;user-select:none;
+  }
+
+  /* ===== 右：電卓（あなたの改のまま） ===== */
+  .calc{
+    min-height:0;
+    background:var(--glass);
+    border:1px solid var(--bd);
+    border-radius:16px;
+    padding:12px;
+    display:grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap:10px;
+    overflow:hidden;
+  }
+
+  .colTabs{
+    display:none;
+    gap:8px;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+  }
+  @media (orientation:portrait){
+    .colTabs{display:flex;}
+  }
+  .colTab{
+    min-width:92px;
+    padding:8px 10px;
+    border-radius:10px;
+    background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(235,235,235,.85));
+    border:1px solid rgba(0,0,0,.25);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 2px 7px rgba(0,0,0,.10);
+    font-weight:1000;
+    color:#0b3a8a;
+    text-align:center;
+    cursor:pointer;
+    user-select:none;
+  }
+  .colTab.active{
+    background:linear-gradient(180deg, rgba(90,140,230,.85), rgba(60,110,210,.85));
+    color:#fff;
+  }
+
+  .padNum{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:var(--gap);
+    align-content:start;
+  }
+  .padOps{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:var(--gap);
+    align-content:start;
+  }
+
+  .key{
+    height:var(--keyH);
+    border-radius:var(--keyRadius);
+    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
+    border:1px solid rgba(0,0,0,.22);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
+    display:grid;place-items:center;
+    font-weight:1200;
+    cursor:pointer;user-select:none;
+    overflow:hidden;
+  }
+  .key .kspan{display:inline-block;max-width:100%;padding:0 6px;white-space:nowrap}
+
+  .numKey{ font-size:var(--keyFS); color:#111; }
+  .opKey{
+    background:linear-gradient(180deg, var(--btnOp1), var(--btnOp2));
+    border-color:rgba(0,0,0,.22);
+    font-size:var(--keyFSop);
+    color:#111;
+  }
+  .funcKey{
+    background:linear-gradient(180deg, var(--btnFunc1), var(--btnFunc2));
+    border-color:rgba(0,0,0,.35);
+    font-size:var(--keyFSfunc);
+    color:#fff;
+  }
+  .undoKey{
+    background:linear-gradient(180deg, var(--btnUndo1), var(--btnUndo2));
+    border-color:rgba(0,0,0,.35);
+    color:#fff;
+    font-size:var(--keyFSfunc);
+  }
+  .redoKey{
+    background:linear-gradient(180deg, var(--btnRedo1), var(--btnRedo2));
+    border-color:rgba(0,0,0,.35);
+    color:#fff;
+    font-size:var(--keyFSfunc);
+  }
+  .eqKey{
+    background:linear-gradient(180deg, rgba(34,34,34,.92), rgba(10,10,10,.92));
+    color:#fff;border:1px solid rgba(0,0,0,.35);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.10), 0 2px 6px rgba(0,0,0,.18);
+    font-size:var(--keyFSfunc);
+  }
+
+  .tinyNote{
+    font-size:12px;
+    color:rgba(255,255,255,.88);
+    line-height:1.2;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    min-height:16px;
+  }
+
+  .key:active,.acBtn:active,.linkBtn:active,.gear:active,.colTab:active{transform:translateY(1px)}
+
+  /* ===== modal（画面内に収まる） ===== */
+  .backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.45);
+    display:none;align-items:center;justify-content:center;
+    z-index:999;padding:12px;
+  }
+  .modal{
+    width:min(920px,100%);
+    max-height:92vh;
+    background:#fff;border-radius:18px;overflow:hidden;
+    border:1px solid rgba(0,0,0,.18);
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+    display:flex;flex-direction:column;
+  }
+  .mHead{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;flex:0 0 auto}
+  .mHead h2{margin:0;font-size:16px}
+  .mBody{
+    padding:14px;
+    display:grid;gap:14px;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+    flex:1 1 auto;
+  }
+  .sec{border:1px solid #eee;border-radius:14px;padding:12px}
+  .secTitle{font-weight:1000;margin-bottom:10px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  label.form{display:block;font-size:12px;color:#475467;margin:8px 0 4px}
+  input{width:100%;padding:10px 10px;border:1px solid #d0d5dd;border-radius:12px;font-size:14px}
+  .mActions{padding:12px 14px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #eee;flex-wrap:wrap;flex:0 0 auto}
+  .btn{padding:10px 12px;border-radius:12px;border:1px solid #d0d5dd;background:#fff;cursor:pointer;font-weight:900}
+  .btn.primary{background:#111;color:#fff;border-color:#111}
+  .btn.danger{background:#b42318;color:#fff;border-color:#b42318}
+  .small{font-size:12px;color:#667085;margin-top:6px}
+</style>
+</head>
+
+<body>
+<div class="frame">
+  <div class="app">
+    <div class="topbar">
+      <div class="tabs" id="tabs"></div>
+
+      <div class="topRight">
+        <div class="gear" id="gear" title="設定">⚙️</div>
+        <div class="linkBar" id="linkBar"></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="leftWrap">
+        <div class="lists" id="lists"></div>
+        <div class="acRow" id="acRow">
+          <div class="acBtn" id="ac1">AC</div>
+          <div class="acBtn" id="ac2">AC</div>
+          <div class="acBtn" id="ac3">AC</div>
+        </div>
+      </div>
+
+      <div class="calc">
+        <div class="colTabs" id="colTabs"></div>
+
+        <!-- 上：テンキー -->
+        <div class="padNum" id="padNum">
+          <div class="key numKey" data-k="7"><span class="kspan">7</span></div>
+          <div class="key numKey" data-k="8"><span class="kspan">8</span></div>
+          <div class="key numKey" data-k="9"><span class="kspan">9</span></div>
+
+          <div class="key numKey" data-k="4"><span class="kspan">4</span></div>
+          <div class="key numKey" data-k="5"><span class="kspan">5</span></div>
+          <div class="key numKey" data-k="6"><span class="kspan">6</span></div>
+
+          <div class="key numKey" data-k="1"><span class="kspan">1</span></div>
+          <div class="key numKey" data-k="2"><span class="kspan">2</span></div>
+          <div class="key numKey" data-k="3"><span class="kspan">3</span></div>
+
+          <div class="key numKey" data-k="0"><span class="kspan">0</span></div>
+          <div class="key numKey" data-k="00"><span class="kspan">00</span></div>
+          <div class="key numKey" data-k="."><span class="kspan">.</span></div>
+        </div>
+
+        <!-- 下：演算（9個） -->
+        <div class="padOps" id="padOps">
+          <div class="key opKey" data-k="NEG"><span class="kspan">±</span></div>
+          <div class="key opKey" data-k="MUL"><span class="kspan">×</span></div>
+          <div class="key opKey" data-k="ADD"><span class="kspan">＋</span></div>
+
+          <div class="key funcKey" data-k="C"><span class="kspan">C</span></div>
+          <div class="key opKey" data-k="DIV"><span class="kspan">÷</span></div>
+          <div class="key opKey" data-k="SUB"><span class="kspan">－</span></div>
+
+          <div class="key undoKey" data-k="UNDO"><span class="kspan">↩︎</span></div>
+          <div class="key redoKey" data-k="REDO"><span class="kspan">↪︎</span></div>
+          <div class="key eqKey" data-k="ENTER"><span class="kspan">＝</span></div>
+        </div>
+
+        <div class="tinyNote" id="tinyNote">対象：-</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- modal -->
+<div class="backdrop" id="backdrop">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="mHead">
+      <h2>設定</h2>
+      <button class="btn" type="button" id="closeM">閉じる</button>
+    </div>
+
+    <div class="mBody">
+      <div class="sec">
+        <div class="secTitle">リンク（横4つ）</div>
+        <div class="grid2" id="linksForm"></div>
+        <div class="small">URLが空なら未設定（ボタン押下でこの設定が開きます）。</div>
+      </div>
+
+      <div class="sec">
+        <div class="secTitle">タブ名（固定5）</div>
+        <div class="grid2" id="tabsForm"></div>
+      </div>
+
+      <div class="sec">
+        <div class="secTitle">枠数（列ごと）</div>
+        <div class="grid2" id="rowsForm"></div>
+        <div class="small">列1/列2/列3 を別々に設定できます（最大40）。</div>
+      </div>
+
+      <div class="sec">
+        <div class="secTitle">消去</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn danger" type="button" id="wipeTab">このタブを全消去</button>
+          <button class="btn danger" type="button" id="wipeAll">全タブを全消去</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mActions">
+      <button class="btn" type="button" id="cancelM">キャンセル</button>
+      <button class="btn primary" type="button" id="saveM">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const KEY = "sanren_calc_acalcm_v15_all";
+  const TAB_COUNT = 5;
+  const COLS = 3;
+
+  const DEFAULT_ROWS = [15,15,15];
+  const MAX_ROWS = 40;
+
+  // 入力上限：1千万
+  const MAX_ABS = 10000000;
+
+  const HISTORY_MAX = 400;
+  const undoStack = [];
+  const redoStack = [];
+  let suppressHistory = false;
+
+  const $ = (id)=>document.getElementById(id);
+  const tabsEl = $("tabs");
+  const listsEl = $("lists");
+  const linkBar = $("linkBar");
+  const gear = $("gear");
+  const tinyNote = $("tinyNote");
+  const colTabsEl = $("colTabs");
+
+  const backdrop = $("backdrop");
+  const closeM = $("closeM");
+  const cancelM = $("cancelM");
+  const saveM = $("saveM");
+  const linksForm = $("linksForm");
+  const tabsForm = $("tabsForm");
+  const rowsForm = $("rowsForm");
+
+  const acRowEl = $("acRow");
+  const ac1 = $("ac1");
+  const ac2 = $("ac2");
+  const ac3 = $("ac3");
+
+  // 入力状態
+  let entry = "";
+  let mode  = "num";   // "num" | "mul" | "div" | "sub"
+  let sign  = +1;
+
+  // state
+  let state = load() || initial();
+  let activeTab = clamp(state.activeTab, 0, TAB_COUNT-1);
+  let activeCol = clamp(state.activeCol, 0, COLS-1);
+  let activeRow = clamp(state.activeRow, 0, getRows(activeCol)-1);
+
+  // render最適化
+  let lastRenderKey = "";
+
+  function initial(){
+    return {
+      activeTab:0, activeCol:0, activeRow:0,
+      rowsByCol:[...DEFAULT_ROWS],
+      tabs:Array.from({length:TAB_COUNT}, (_,i)=>({
+        name:`List${i+1}`,
+        cols:Array.from({length:COLS}, (__,c)=>({
+          rows: Array.from({length:DEFAULT_ROWS[c]}, ()=>({label:"", kind:"num", value:null}))
+        }))
+      })),
+      links:Array.from({length:4}, ()=>({label:"", url:""})),
+      savedAt:new Date().toISOString()
+    };
+  }
+
+  function save(){
+    state.activeTab = activeTab;
+    state.activeCol = activeCol;
+    state.activeRow = activeRow;
+    state.savedAt = new Date().toISOString();
+    try{
+      localStorage.setItem(KEY, JSON.stringify(state));
+    }catch(e){
+      console.warn("localStorage save failed:", e);
+    }
+  }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(!obj.tabs || !obj.links || !obj.rowsByCol) return null;
+      obj.tabs.forEach(t=>{
+        t.cols.forEach((c, idx)=>{
+          if(!c.rows){
+            c.rows = Array.from({length:(obj.rowsByCol?.[idx]||DEFAULT_ROWS[idx])}, ()=>({label:"", kind:"num", value:null}));
+          }
+        });
+      });
+      return obj;
+    }catch{ return null; }
+  }
+
+  function clamp(v,min,max){
+    v = Number(v);
+    if(!Number.isFinite(v)) return min;
+    return Math.max(min, Math.min(max, Math.trunc(v)));
+  }
+
+  function getRows(c){
+    const n = Number(state.rowsByCol?.[c]);
+    return Number.isFinite(n) && n>0 ? n : DEFAULT_ROWS[c];
+  }
+
+  function normalizeRows(col, targetRows){
+    col.rows = Array.isArray(col.rows) ? col.rows.slice(0, targetRows) : [];
+    while(col.rows.length < targetRows) col.rows.push({label:"", kind:"num", value:null});
+  }
+
+  function fmt(n){
+    if(n===null || n===undefined) return "";
+    if(!Number.isFinite(n)) return "Error";
+    const [a,b]=String(n).split(".");
+    const x = Number(a).toLocaleString("ja-JP");
+    return b ? `${x}.${b}` : x;
+  }
+
+  function withinLimit(n){
+    return Number.isFinite(n) && Math.abs(n) <= MAX_ABS;
+  }
+
+  function calcResult(col){
+    let total = 0;
+    for(const r of col.rows){
+      if(r.kind==="num" || r.kind==="sub"){
+        if(Number.isFinite(r.value)) total += r.value;
+      }else if(r.kind==="mul"){
+        if(Number.isFinite(r.value)) total *= r.value;
+      }else if(r.kind==="div"){
+        if(Number.isFinite(r.value) && r.value!==0) total /= r.value;
+      }
+    }
+    return total;
+  }
+
+  function pushHistory(action){
+    if(suppressHistory) return;
+    undoStack.push(action);
+    if(undoStack.length > HISTORY_MAX) undoStack.shift();
+    redoStack.length = 0;
+  }
+
+  function applyAction(action, direction){
+    const tab = state.tabs[action.tab];
+    const col = tab.cols[action.col];
+    normalizeRows(col, getRows(action.col));
+    if(action.row >= col.rows.length) return;
+    suppressHistory = true;
+    try{
+      col.rows[action.row] = { ...(direction==="undo" ? action.prev : action.next) };
+      activeTab = action.tab;
+      activeCol = action.col;
+      activeRow = action.row;
+      save();
+      renderAll(true);
+    } finally { suppressHistory = false; }
+  }
+  function undo(){ const a=undoStack.pop(); if(!a) return; applyAction(a,"undo"); redoStack.push(a); }
+  function redo(){ const a=redoStack.pop(); if(!a) return; applyAction(a,"redo"); undoStack.push(a); }
+
+  // ===== AutoFit（重いので “変わった要素だけ”） =====
+  function fitSpan(span, box, maxPx, minPx){
+    if(!span || !box) return;
+
+    const text = span.textContent ?? "";
+    const prevText = span.dataset.prevText || "";
+    const prevW = Number(span.dataset.prevW || "0");
+    const bw = box.clientWidth;
+
+    if(text === prevText && prevW === bw) return;
+
+    span.dataset.prevText = text;
+    span.dataset.prevW = String(bw);
+
+    const st = getComputedStyle(box);
+    const padL = parseFloat(st.paddingLeft)||0;
+    const padR = parseFloat(st.paddingRight)||0;
+    const avail = Math.max(10, bw - padL - padR);
+    const fontFamily = st.fontFamily;
+    const fontWeight = st.fontWeight;
+
+    const canvas = fitSpan._c || (fitSpan._c = document.createElement("canvas"));
+    const ctx = canvas.getContext("2d");
+
+    let lo=minPx, hi=maxPx, best=minPx;
+    while(lo<=hi){
+      const mid=(lo+hi)>>1;
+      ctx.font = `${fontWeight} ${mid}px ${fontFamily}`;
+      const w = ctx.measureText(text).width;
+      if(w<=avail){ best=mid; lo=mid+1; } else hi=mid-1;
+    }
+    span.style.fontSize = best+"px";
+  }
+
+  function cssNum(varName, fallback){
+    const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    const n = Number(String(v).replace("px",""));
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function applyAutoFitVisible(){
+    document.querySelectorAll(".topBox").forEach(box=>{
+      fitSpan(box.querySelector(".topSpan"), box, cssNum("--topMax",46), cssNum("--topMin",18));
+    });
+    document.querySelectorAll(".numLine").forEach(box=>{
+      fitSpan(box.querySelector(".numSpan"), box, cssNum("--numMax",30), cssNum("--numMin",12));
+    });
+    document.querySelectorAll(".key").forEach(k=>{
+      const span = k.querySelector(".kspan");
+      if(!span) return;
+      const isNum = k.classList.contains("numKey");
+      const isOp  = k.classList.contains("opKey");
+      const isFunc= k.classList.contains("funcKey") || k.classList.contains("undoKey") || k.classList.contains("redoKey") || k.classList.contains("eqKey");
+      const max = isOp ? cssNum("--keyFSop",40) : (isFunc ? cssNum("--keyFSfunc",36) : cssNum("--keyFS",38));
+      fitSpan(span, k, max, 18);
+    });
+  }
+
+  function isPortrait(){
+    return window.matchMedia && window.matchMedia("(orientation:portrait)").matches;
+  }
+
+  function renderTabs(){
+    tabsEl.innerHTML="";
+    state.tabs.forEach((t,i)=>{
+      const d=document.createElement("div");
+      d.className="tab"+(i===activeTab?" active":"");
+      d.textContent = t.name || `List${i+1}`;
+      d.onclick=()=>{
+        activeTab=i; activeCol=0; activeRow=0;
+        entry=""; mode="num"; sign=+1;
+        save(); renderAll(true);
+      };
+      tabsEl.appendChild(d);
+    });
+  }
+
+  function renderColTabs(){
+    colTabsEl.innerHTML="";
+    for(let c=0;c<COLS;c++){
+      const b=document.createElement("div");
+      b.className="colTab"+(c===activeCol ? " active" : "");
+      b.textContent = `List${c+1}`;
+      b.onclick=()=>{
+        activeCol=c;
+        activeRow = Math.min(activeRow, getRows(activeCol)-1);
+        entry=""; mode="num"; sign=+1;
+        save();
+        renderAll(true);
+      };
+      colTabsEl.appendChild(b);
+    }
+  }
+
+  function renderLinks(){
+    linkBar.innerHTML="";
+    state.links.forEach((lnk)=>{
+      const b=document.createElement("div");
+      const has=!!(lnk.url && String(lnk.url).trim());
+      b.className="linkBtn"+(has?"":" disabled");
+      b.textContent = (lnk.label||"").trim();
+      b.title = has ? lnk.url : "未設定（設定で入力）";
+      b.onclick=()=>{
+        if(!has){ openModal(); return; }
+        window.open(String(lnk.url).trim(), "_blank", "noopener,noreferrer");
+      };
+      linkBar.appendChild(b);
+    });
+  }
+
+  function setRow(next){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[activeCol];
+    normalizeRows(col, getRows(activeCol));
+    const before = {...col.rows[activeRow]};
+    const after  = {...before, ...next};
+    if(before.label===after.label && before.kind===after.kind && before.value===after.value) return;
+
+    pushHistory({tab:activeTab, col:activeCol, row:activeRow, prev:before, next:after});
+    col.rows[activeRow] = after;
+    save();
+    renderLists();
+  }
+
+  // ===== 挿入/削除（列内固定行数のまま） =====
+  function blankRow(){ return {label:"", kind:"num", value:null}; }
+
+  function insertRowAt(c, r){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[c];
+    normalizeRows(col, getRows(c));
+
+    // 下へずらす（最後は押し出し）
+    for(let i=col.rows.length-1;i>r;i--){
+      col.rows[i] = {...col.rows[i-1]};
+    }
+    col.rows[r] = blankRow();
+
+    activeCol = c;
+    activeRow = r;
+    entry=""; mode="num"; sign=+1;
+    save();
+    renderAll(true);
+  }
+
+  function deleteRowAt(c, r){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[c];
+    normalizeRows(col, getRows(c));
+
+    for(let i=r;i<col.rows.length-1;i++){
+      col.rows[i] = {...col.rows[i+1]};
+    }
+    col.rows[col.rows.length-1] = blankRow();
+
+    activeCol = c;
+    activeRow = Math.min(r, col.rows.length-1);
+    entry=""; mode="num"; sign=+1;
+    save();
+    renderAll(true);
+  }
+
+  // ===== スワイプ削除：スライドした時だけ表示 =====
+  function closeAllSwipes(exceptEl=null){
+    document.querySelectorAll(".row.swiped").forEach(el=>{
+      if(el!==exceptEl) el.classList.remove("swiped");
+    });
+  }
+
+  function attachSwipeAndLongPress(rowEl, c, r){
+    let sx=0, sy=0;
+    let tracking=false;
+    let longTimer=null;
+    let longFired=false;
+
+    const cancelLong = ()=>{
+      if(longTimer){ clearTimeout(longTimer); longTimer=null; }
+    };
+
+    rowEl.addEventListener("pointerdown",(e)=>{
+      if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
+      rowEl.setPointerCapture?.(e.pointerId);
+
+      sx = e.clientX; sy = e.clientY;
+      tracking = true;
+      longFired=false;
+
+      // すでに別行が開いてたら閉じる（この行は除外）
+      closeAllSwipes(rowEl);
+
+      cancelLong();
+      longTimer = setTimeout(()=>{
+        longFired=true;
+        // スワイプ開いてる時は挿入しない
+        if(rowEl.classList.contains("swiped")) return;
+        insertRowAt(c, r);
+      }, 600);
+    });
+
+    rowEl.addEventListener("pointermove",(e)=>{
+      if(!tracking || longFired) return;
+
+      const dx = e.clientX - sx;
+      const dy = e.clientY - sy;
+
+            // 縦が強いならスクロール優先 → 何もしない
+      if(Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10){
+        cancelLong();
+        return;
+      }
+
+      // 横方向に動き始めたら長押しキャンセル
+      if(Math.abs(dx) > 14) cancelLong();
+
+      // 左スワイプで開く / 右で閉じる
+      if(dx < -34){
+        rowEl.classList.add("swiped");
+      }else if(dx > 22){
+        rowEl.classList.remove("swiped");
+      }
+    });
+
+    const end = ()=>{
+      tracking=false;
+      cancelLong();
+    };
+    rowEl.addEventListener("pointerup", end);
+    rowEl.addEventListener("pointercancel", end);
+    rowEl.addEventListener("lostpointercapture", end);
+  }
+
+  function renderLists(){
+    const renderKey = [
+      activeTab, activeCol, activeRow,
+      state.rowsByCol?.join(","),
+      isPortrait() ? "P":"L",
+      state.savedAt
+    ].join("|");
+
+    if(renderKey === lastRenderKey){
+      requestAnimationFrame(applyAutoFitVisible);
+      return;
+    }
+    lastRenderKey = renderKey;
+
+    listsEl.innerHTML="";
+    const tab = state.tabs[activeTab];
+    for(let c=0;c<COLS;c++) normalizeRows(tab.cols[c], getRows(c));
+
+    const portrait = isPortrait();
+    const colsToShow = portrait ? [activeCol] : [0,1,2];
+
+    if(portrait){
+      ac2.style.display="none";
+      ac3.style.display="none";
+      acRowEl.style.gridTemplateColumns = "1fr";
+    }else{
+      ac2.style.display="";
+      ac3.style.display="";
+      acRowEl.style.gridTemplateColumns = "repeat(3, 1fr)";
+    }
+
+    colsToShow.forEach((c)=>{
+      const col = tab.cols[c];
+      const colEl=document.createElement("div");
+      colEl.className="col";
+
+      const res=calcResult(col);
+      const top=document.createElement("div");
+      top.className="topBox"+(res<0?" neg":"");
+      const topSpan=document.createElement("span");
+      topSpan.className="topSpan";
+      topSpan.textContent = fmt(res) || "0";
+      top.appendChild(topSpan);
+
+      const panel=document.createElement("div");
+      panel.className="panel";
+
+      for(let r=0;r<col.rows.length;r++){
+        const it = col.rows[r];
+
+        const row=document.createElement("div");
+        row.className="row"+(c===activeCol && r===activeRow ? " active":"");
+
+        const rowMain=document.createElement("div");
+        rowMain.className="rowMain";
+
+        // タップ：アクティブ化（swiped中は閉じるだけ）
+        rowMain.onclick=()=>{
+          if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
+          if(row.classList.contains("swiped")){
+            row.classList.remove("swiped");
+            return;
+          }
+          activeCol=c; activeRow=r;
+          entry=""; mode="num"; sign=+1;
+          save();
+          renderLists();
+          updateTiny();
+        };
+
+        const delBtn=document.createElement("button");
+        delBtn.className="delBtn";
+        delBtn.type="button";
+        delBtn.textContent="削除";
+        delBtn.onclick=(ev)=>{
+          ev.stopPropagation();
+          deleteRowAt(c, r);
+          closeAllSwipes();
+        };
+
+        const labelLine=document.createElement("div");
+        labelLine.className="labelLine";
+
+        const lab=document.createElement("div");
+        lab.className="label";
+        const t=(it.label||"");
+        if(!t.trim()){ lab.classList.add("empty"); lab.innerHTML="&nbsp;"; }
+        else lab.textContent=t;
+        lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
+        labelLine.append(lab);
+
+        const numLine=document.createElement("div");
+        numLine.className="numLine";
+
+        let show="";
+        if(it.kind==="num"){
+          if(Number.isFinite(it.value)) show = fmt(it.value);
+          if(Number.isFinite(it.value) && it.value<0) numLine.classList.add("neg");
+        }else if(it.kind==="sub"){
+          if(Number.isFinite(it.value)) { show = fmt(it.value); numLine.classList.add("neg"); }
+          else show = "－";
+        }else if(it.kind==="mul"){
+          show = Number.isFinite(it.value) ? `×${fmt(it.value)}` : "×";
+        }else if(it.kind==="div"){
+          show = Number.isFinite(it.value) ? `÷${fmt(it.value)}` : "÷";
+        }
+
+        const numSpan=document.createElement("span");
+        numSpan.className="numSpan";
+        numSpan.textContent=show;
+        numLine.appendChild(numSpan);
+
+        rowMain.append(labelLine,numLine);
+        row.append(rowMain, delBtn);
+        panel.appendChild(row);
+
+        // スワイプ＆長押し
+        attachSwipeAndLongPress(row, c, r);
+      }
+
+      colEl.append(top,panel);
+      listsEl.appendChild(colEl);
+    });
+
+    // パネル外タップでswipe閉じる
+    listsEl.onclick = (e)=>{
+      const row = e.target.closest(".row");
+      if(!row) closeAllSwipes();
+    };
+
+    // AC：確認なし
+    ac1.onclick=()=> clearCol( portrait ? activeCol : 0 );
+    ac2.onclick=()=> clearCol(1);
+    ac3.onclick=()=> clearCol(2);
+
+    requestAnimationFrame(applyAutoFitVisible);
+  }
+
+  function clearCol(idx){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[idx];
+    normalizeRows(col, getRows(idx));
+    for(let r=0;r<col.rows.length;r++){
+      const before={...col.rows[r]};
+      const after ={label:before.label, kind:"num", value:null};
+      pushHistory({tab:activeTab, col:idx, row:r, prev:before, next:after});
+      col.rows[r]=after;
+    }
+    entry=""; mode="num"; sign=+1;
+    save(); renderAll(true);
+  }
+
+  function updateTiny(){
+    const tab = state.tabs[activeTab];
+    const it  = tab.cols[activeCol].rows[activeRow];
+    const label = (it.label||"").trim();
+    tinyNote.textContent = `対象：${tab.name} / 列${activeCol+1} / ${label ? label : "（未入力）"}`;
+  }
+
+  function startLabelEdit(c,r){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[c];
+    normalizeRows(col, getRows(c));
+
+    activeCol=c; activeRow=r;
+    save(); renderLists(); updateTiny();
+
+    const colEls = [...listsEl.querySelectorAll(".col")];
+    const colEl = isPortrait() ? colEls[0] : colEls[c];
+    const rowEl = colEl.querySelectorAll(".row")[r];
+    const labEl = rowEl.querySelector(".label");
+
+    rowEl.classList.remove("swiped");
+
+    labEl.classList.remove("empty");
+    if(labEl.innerHTML==="&nbsp;") labEl.textContent="";
+
+    const before={...col.rows[r]};
+    labEl.contentEditable="true";
+    labEl.focus();
+
+    const finish=()=>{
+      labEl.contentEditable="false";
+      const afterLabel=(labEl.textContent||"").trim();
+      if(before.label!==afterLabel){
+        const next={...col.rows[r], label:afterLabel};
+        pushHistory({tab:activeTab, col:c, row:r, prev:before, next});
+        col.rows[r].label=afterLabel;
+        save();
+      }
+      renderLists(); updateTiny();
+    };
+
+    labEl.onkeydown=(e)=>{
+      if(e.key==="Enter"){e.preventDefault(); labEl.blur();}
+      if(e.key==="Escape"){e.preventDefault(); labEl.textContent=before.label||""; labEl.blur();}
+    };
+    labEl.onblur=finish;
+  }
+
+  // ===== 入力（上限1000万） =====
+  function appendDigit(d){
+    const before = entry;
+
+    if(d==="00"){
+      if(entry==="" || entry==="0") return;
+      entry += "00";
+    }else if(d==="."){
+      if(entry==="") entry="0.";
+      else if(entry.includes(".")) return;
+      else entry += ".";
+    }else{
+      if(entry==="0") entry="";
+      entry += d;
+    }
+
+    const n = Number(entry);
+    if(!Number.isFinite(n) || !withinLimit(n)){
+      entry = before;
+      return;
+    }
+
+    if(mode==="num"){
+      setRow({kind:"num", value: sign*n});
+    }else if(mode==="mul"){
+      setRow({kind:"mul", value: n});
+    }else if(mode==="div"){
+      setRow({kind:"div", value: n});
+    }else if(mode==="sub"){
+      setRow({kind:"sub", value: -n});
+    }
+  }
+
+  function clearAll(){
+    entry=""; mode="num"; sign=+1;
+    setRow({kind:"num", value:0});
+  }
+
+  function toggleNeg(){
+    if(mode!=="num") { mode="num"; entry=""; sign=+1; }
+    sign*=-1;
+    const tab = state.tabs[activeTab];
+    const cur = tab.cols[activeCol].rows[activeRow];
+    if(Number.isFinite(cur.value)){
+      const nv = -cur.value;
+      if(withinLimit(nv)) setRow({kind:"num", value:nv});
+    }
+  }
+
+  function pressAdd(){ entry=""; mode="num"; sign=+1; }
+  function pressSub(){ entry=""; mode="sub"; sign=-1; setRow({kind:"sub", value:null}); }
+  function pressMul(){ entry=""; mode="mul"; setRow({kind:"mul", value:null}); }
+  function pressDiv(){ entry=""; mode="div"; setRow({kind:"div", value:null}); }
+
+  function enter(){
+    entry=""; mode="num"; sign=+1;
+    activeRow = Math.min(getRows(activeCol)-1, activeRow+1);
+    save();
+    renderLists();
+    updateTiny();
+  }
+
+  function handleKey(k){
+    if(k==="UNDO") return undo();
+    if(k==="REDO") return redo();
+    if(/^[0-9]$/.test(k) || k==="00" || k===".") return appendDigit(k);
+    if(k==="C") return clearAll();
+    if(k==="NEG") return toggleNeg();
+    if(k==="ADD") return pressAdd();
+    if(k==="SUB") return pressSub();
+    if(k==="MUL") return pressMul();
+    if(k==="DIV") return pressDiv();
+    if(k==="ENTER") return enter();
+  }
+
+  document.addEventListener("click",(e)=>{
+    const btn=e.target.closest("[data-k]");
+    if(!btn) return;
+    handleKey(btn.getAttribute("data-k"));
+  });
+
+  // ===== modal =====
+  function openModal(){ buildModal(); backdrop.style.display="flex"; }
+  function closeModal(){ backdrop.style.display="none"; }
+
+  gear.onclick=openModal;
+  closeM.onclick=closeModal;
+  cancelM.onclick=closeModal;
+  backdrop.addEventListener("click",(e)=>{ if(e.target===backdrop) closeModal(); });
+
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+
+  function buildModal(){
+    linksForm.innerHTML="";
+    state.links.forEach((lnk,i)=>{
+      const box=document.createElement("div");
+      box.innerHTML = `
+        <div style="border:1px solid #eee;border-radius:14px;padding:10px">
+          <div style="font-weight:1000;margin-bottom:6px">リンク${i+1}</div>
+          <label class="form">ボタン名（空でもOK）</label>
+          <input id="lnk_label_${i}" value="${escapeHtml(lnk.label||"")}">
+          <label class="form">URL</label>
+          <input id="lnk_url_${i}" value="${escapeHtml(lnk.url||"")}" placeholder="https://...">
+        </div>`;
+      linksForm.appendChild(box);
+    });
+
+    tabsForm.innerHTML="";
+    state.tabs.forEach((t,i)=>{
+      const box=document.createElement("div");
+      box.innerHTML = `
+        <div style="border:1px solid #eee;border-radius:14px;padding:10px">
+          <div style="font-weight:1000;margin-bottom:6px">タブ${i+1}</div>
+          <label class="form">タブ名</label>
+          <input id="tab_name_${i}" value="${escapeHtml(t.name||`List${i+1}`)}">
+        </div>`;
+      tabsForm.appendChild(box);
+    });
+
+    rowsForm.innerHTML="";
+    for(let c=0;c<COLS;c++){
+      const cur=getRows(c);
+      const box=document.createElement("div");
+      box.innerHTML = `
+        <div style="border:1px solid #eee;border-radius:14px;padding:10px">
+          <div style="font-weight:1000;margin-bottom:6px">列${c+1}</div>
+          <label class="form">枠数（1〜${MAX_ROWS}）</label>
+          <input id="rows_${c}" type="number" min="1" max="${MAX_ROWS}" value="${cur}">
+        </div>`;
+      rowsForm.appendChild(box);
+    }
+
+    $("wipeTab").onclick=()=>{
+      const t=state.tabs[activeTab];
+      t.cols.forEach((c, ci)=>{
+        normalizeRows(c, getRows(ci));
+        c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
+      });
+      entry=""; mode="num"; sign=+1;
+      save(); renderAll(true);
+    };
+
+    $("wipeAll").onclick=()=>{
+      state.tabs.forEach(t=>{
+        t.cols.forEach((c, ci)=>{
+          normalizeRows(c, getRows(ci));
+          c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
+        });
+      });
+      entry=""; mode="num"; sign=+1;
+      save(); renderAll(true);
+    };
+  }
+
+  saveM.onclick=()=>{
+    for(let i=0;i<4;i++){
+      const label = document.getElementById(`lnk_label_${i}`).value;
+      const url = document.getElementById(`lnk_url_${i}`).value.trim();
+      state.links[i] = { label, url };
+    }
+    for(let i=0;i<TAB_COUNT;i++){
+      const nm = document.getElementById(`tab_name_${i}`).value.trim() || `List${i+1}`;
+      state.tabs[i].name = nm;
+    }
+
+    const newRows=[];
+    for(let c=0;c<COLS;c++){
+      const v = Number(document.getElementById(`rows_${c}`).value);
+      const n = Number.isFinite(v) ? Math.max(1, Math.min(MAX_ROWS, Math.trunc(v))) : DEFAULT_ROWS[c];
+      newRows.push(n);
+    }
+    state.rowsByCol=newRows;
+
+    state.tabs.forEach(t=>{
+      for(let c=0;c<COLS;c++) normalizeRows(t.cols[c], getRows(c));
+    });
+
+    activeRow = clamp(activeRow, 0, getRows(activeCol)-1);
+
+    save();
+    renderAll(true);
+    closeModal();
+  };
+
+  function renderAll(force=false){
+    if(force){
+      lastRenderKey = "";
+      document.querySelectorAll("[data-prev-text]").forEach(el=>{
+        delete el.dataset.prevText;
+        delete el.dataset.prevW;
+      });
+    }
+    renderTabs();
+    renderColTabs();
+    renderLinks();
+    renderLists();
+    updateTiny();
+    requestAnimationFrame(applyAutoFitVisible);
+  }
+
+  // resize（回転含む）をdebounceして重さ回避
+  let resizeTimer = null;
+  window.addEventListener("resize", ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(()=>{
+      renderColTabs();
+      renderAll(true);
+    }, 120);
+  });
+
+  // どこか触ったらswipe閉じる（設定を触る時も）
+  document.addEventListener("pointerdown",(e)=>{
+    if(e.target.closest(".row")) return;
+    closeAllSwipes();
+  }, {passive:true});
+
+  save();
+  renderAll(true);
+})();
+</script>
+</body>
+</html>
