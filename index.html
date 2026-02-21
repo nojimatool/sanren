@@ -16,55 +16,64 @@
 
   <style>
   :root{
-    --wood1:#c77c44;
-    --wood2:#aa6433;
-    --glass:rgba(255,255,255,.18);
-    --panel:rgba(255,255,255,.92);
-    --bd:rgba(0,0,0,.18);
-    --neg:#d92d20;
+  /* ===== ノジマ風カラー ===== */
+  --wood1:#0d3f91;     /* 上：ノジマブルー */
+  --wood2:#082b66;     /* 下：濃い青 */
 
-    --calcW: 300px;
-    --colMinW: 260px;
+  --glass:rgba(255,255,255,.12);
+  --panel:rgba(255,255,255,.95);
+  --bd:rgba(0,0,0,.18);
+  --neg:#d92d20;
 
-    --rowH: 52px;
-    --labelFS: 14px;
+  --calcW: 300px;
+  --colMinW: 260px;
 
-    /* 数字表示（列内） */
-    --numMax: 30px;
-    --numMin: 12px;
+  --rowH: 52px;
+  --labelFS: 14px;
 
-    /* 上段合計 */
-    --topMax: 46px;
-    --topMin: 18px;
+  /* 数字表示 */
+  --numMax: 30px;
+  --numMin: 12px;
 
-    /* キーサイズ（枠は崩さず、文字をできるだけ大きく） */
-    --gap: 10px;
-    --keyFS: 38px;      /* ベース（後でfitで縮む） */
-    --keyFSop: 40px;
-    --keyFSfunc: 36px;
-    --keyRadius: 14px;
+  /* 合計 */
+  --topMax: 46px;
+  --topMin: 18px;
 
-    /* キー高さ：画面に合わせて可変（被り防止） */
-    --keyH: clamp(66px, 8.4vh, 92px);
+  /* ===== キー ===== */
+  --gap: 10px;
+  --keyFS: 38px;
+  --keyFSop: 40px;
+  --keyFSfunc: 36px;
+  --keyRadius: 14px;
+  --keyH: clamp(66px, 8.4vh, 92px);
 
-    --btnGrey1: rgba(245,245,245,.95);
-    --btnGrey2: rgba(230,230,230,.92);
-    --btnOp1: rgba(235,235,235,.95);
-    --btnOp2: rgba(215,215,215,.92);
-    --btnFunc1: rgba(150,95,55,.55);
-    --btnFunc2: rgba(100,60,35,.55);
+  /* ===== ボタン配色 ===== */
 
-    --btnUndo1: rgba(70,120,210,.85);
-    --btnUndo2: rgba(40,80,160,.85);
-    --btnRedo1: rgba(165,110,70,.80);
-    --btnRedo2: rgba(115,75,45,.80);
+  /* 数字キー：白〜グレー */
+  --btnGrey1: rgba(255,255,255,.98);
+  --btnGrey2: rgba(230,235,245,.95);
 
-    --tabBlue:#0b3a8a;
+  /* 演算キー：ノジマブルー */
+  --btnOp1: rgba(60,120,230,.95);
+  --btnOp2: rgba(30,80,180,.95);
 
-    /* スワイプ削除 */
-    --delW: 86px;
-    --delBg: #e11d48;
-  }
+  /* Cなど：濃紺 */
+  --btnFunc1: rgba(10,45,120,.85);
+  --btnFunc2: rgba(5,25,70,.90);
+
+  /* undo redo：オレンジ系 */
+  --btnUndo1: rgba(255,150,40,.95);
+  --btnUndo2: rgba(220,110,20,.95);
+
+  --btnRedo1: rgba(255,180,70,.95);
+  --btnRedo2: rgba(230,120,30,.95);
+
+  --tabBlue:#ffffff;
+
+  /* 削除 */
+  --delW: 86px;
+  --delBg: #e11d48;
+}
 
   /* 縦：オリジナル寄せ（1列表示＋列切替） */
   @media (orientation:portrait){
@@ -128,15 +137,28 @@ body{
   .topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .tab{
-    min-width:92px;padding:8px 10px;border-radius:12px;
-    background:rgba(255,255,255,.55);
-    border:1px solid rgba(0,0,0,.20);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
-    font-weight:900;color:var(--tabBlue);
-    text-align:center;cursor:pointer;user-select:none;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
-  .tab.active{background:rgba(255,255,255,.86)}
+  min-width:92px;
+  padding:8px 10px;
+  border-radius:12px;
+
+  background:rgba(255,255,255,.88);
+  border:1px solid rgba(0,0,0,.20);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+
+  font-weight:900;
+  color:#0b3a8a;              /* ← ノジマ青の文字 */
+  text-align:center;
+  cursor:pointer;
+  user-select:none;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.tab.active{
+  background:linear-gradient(180deg, #2e6cff, #0b3a8a); /* ← ノジマ青背景 */
+  color:#fff;                                           /* ← 選択中は白文字 */
+}
   .topRight{margin-left:auto;display:flex;gap:10px;align-items:center}
 
   .gear{
@@ -397,11 +419,12 @@ body{
     font-size:var(--keyFSfunc);
   }
   .eqKey{
-    background:linear-gradient(180deg, rgba(34,34,34,.92), rgba(10,10,10,.92));
-    color:#fff;border:1px solid rgba(0,0,0,.35);
-    box-shadow:inset 0 2px 0 rgba(255,255,255,.10), 0 2px 6px rgba(0,0,0,.18);
-    font-size:var(--keyFSfunc);
-  }
+  background:linear-gradient(180deg, #ff8c00, #e45b00);
+  color:#fff;
+  border:1px solid rgba(0,0,0,.35);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.15), 0 3px 8px rgba(0,0,0,.25);
+  font-size:var(--keyFSfunc);
+}
 
   .tinyNote{
     font-size:12px;
