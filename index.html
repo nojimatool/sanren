@@ -6,16 +6,15 @@
 
   <!-- PWA設定 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="三連電卓" />
 
   <link rel="manifest" href="manifest.json?v=2" />
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=2" />
 
   <title>三連電卓</title>
-</head>
-<style>
+
+  <style>
   :root{
     --wood1:#c77c44;
     --wood2:#aa6433;
@@ -81,13 +80,45 @@
     }
   }
 
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0;background:#121212;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",sans-serif}
+  *{ box-sizing:border-box; }
 
-  .frame{height:100vh;overflow:hidden;padding:10px;max-width:1360px;margin:0 auto}
+/* 画面にピッタリ固定（スクロール禁止） */
+html, body{
+  margin:0;
+  padding:0;
+  height:100%;
+  overflow:hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* bodyは固定しない（←ここが重要） */
+body{
+  width:100%;
+}
+
+/* frame を画面いっぱいに固定 */
+.frame{
+  height:100%;
+  overflow:hidden;
+  padding:10px;
+  max-width:1360px;
+  margin:0 auto;
+}
+
+/* 新しめOSなら dvh を優先（iOSのアドレスバー対策） */
+@supports (height: 100dvh){
+  .frame{ height:100dvh; }
+}
+
+/* iOS Safari向け（効く端末あり） */
+@supports (-webkit-touch-callout: none){
+  .frame{ height:-webkit-fill-available; }
+}
+
   .app{
     height:100%;
+    min-height:0;
     background:linear-gradient(180deg,var(--wood1),var(--wood2));
     border-radius:20px;padding:12px;
     display:flex;flex-direction:column;gap:10px;
