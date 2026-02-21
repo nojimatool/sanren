@@ -98,6 +98,9 @@ html, body{
   height:100%;
   overflow:hidden;
   overscroll-behavior: none;
+  touch-action: manipulation;
+}
+  .row{
   touch-action: pan-y;
 }
 
@@ -312,11 +315,19 @@ body{
   .numLine.neg{color:var(--neg)}
   .numSpan{display:inline-block;max-width:100%}
 
-  .acRow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  @media (orientation:portrait){
-    .acRow{grid-template-columns:repeat(1,1fr);}
-    flex-shrink:0;
-  }
+  .acRow{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+
+  /* ★ここが重要：ACエリアを押し出されないように固定 */
+  flex:0 0 auto;
+  flex-shrink:0;
+}
+
+@media (orientation:portrait){
+  .acRow{ grid-template-columns:repeat(1,1fr); }
+}
   .acBtn{
     height:50px;border-radius:14px;
     background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
