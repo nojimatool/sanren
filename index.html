@@ -25,8 +25,12 @@
     --bd:rgba(0,0,0,.18);
     --neg:#d92d20;
 
-    --calcW: 300px;
-    --colMinW: 260px;
+    /* 画面目一杯寄せ */
+    --framePad: 10px;
+
+    /* 右カラム（電卓）を少し大きくしてキーパッドを大きく見せる */
+    --calcW: 340px;
+    --colMinW: 240px;
 
     --rowH: 52px;
     --labelFS: 14px;
@@ -39,13 +43,17 @@
     --topMax: 46px;
     --topMin: 18px;
 
+    /* 入力ディスプレイ（右上の表示部） */
+    --dispMax: 52px;
+    --dispMin: 20px;
+
     /* ===== キー ===== */
     --gap: 10px;
-    --keyFS: 38px;
-    --keyFSop: 40px;
-    --keyFSfunc: 36px;
+    --keyFS: 42px;
+    --keyFSop: 44px;
+    --keyFSfunc: 40px;
     --keyRadius: 14px;
-    --keyH: clamp(66px, 8.4vh, 92px);
+    --keyH: clamp(74px, 9.2vh, 98px);
 
     /* ===== ボタン配色 ===== */
     --btnGrey1: rgba(255,255,255,.98);
@@ -66,19 +74,27 @@
     /* スワイプ削除 */
     --delW: 86px;
     --delBg: #e11d48;
+
+    /* 選択行ハイライト（薄グレー） */
+    --activeBg: rgba(0,0,0,.06);
+    --activeBd: rgba(0,0,0,.10);
   }
 
-  /* 縦：オリジナル寄せ（1列表示＋列切替） */
+  /* 縦：1列表示＋列切替（見やすく少し広め） */
   @media (orientation:portrait){
     :root{
-      --calcW: 340px;
+      --calcW: 360px;
       --colMinW: 360px;
       --rowH: 50px;
-      --keyH: clamp(64px, 7.6vh, 92px);
-      --gap: 9px;
-      --keyFS: 40px;
-      --keyFSop: 42px;
-      --keyFSfunc: 38px;
+
+      --gap: 10px;
+      --keyH: clamp(78px, 10vh, 102px);
+      --keyFS: 46px;
+      --keyFSop: 48px;
+      --keyFSfunc: 44px;
+
+      --dispMax: 58px;
+      --dispMin: 22px;
     }
   }
 
@@ -90,23 +106,26 @@
     padding:0;
     height:100%;
     overflow:hidden;
-    overscroll-behavior: none;
+    overscroll-behavior:none;
+    -webkit-text-size-adjust: 100%;
   }
-  body{
-    width:100%;
-    background:linear-gradient(180deg,var(--wood1),var(--wood2)); /* ★白地が見えない保険 */
+  @supports (height: 100dvh){
+    html, body{ height:100dvh; }
   }
+  body{ width:100%; }
 
+  /* frame：安全領域を使いつつ、余白最小 */
   .frame{
     height:100%;
     overflow:hidden;
-    /* ★SafeAreaはframe側に吸収（中に余白が出ない） */
-    padding:10px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
-    max-width:1360px;
+    padding:
+      calc(var(--framePad) + env(safe-area-inset-top))
+      calc(var(--framePad) + env(safe-area-inset-right))
+      calc(var(--framePad) + env(safe-area-inset-bottom))
+      calc(var(--framePad) + env(safe-area-inset-left));
+    max-width: 1600px;
     margin:0 auto;
   }
-
   @supports (height: 100dvh){
     .frame{ height:100dvh; }
   }
@@ -118,8 +137,8 @@
     height:100%;
     min-height:0;
     background:linear-gradient(180deg,var(--wood1),var(--wood2));
-    border-radius:20px;
-    padding:12px;
+    border-radius:18px;
+    padding:10px;
     display:flex;
     flex-direction:column;
     gap:10px;
@@ -174,7 +193,7 @@
     flex:1; min-height:0;
     display:grid;
     grid-template-columns: 1fr var(--calcW);
-    gap:12px;
+    gap:10px;
     overflow:hidden;
   }
 
@@ -187,8 +206,7 @@
   }
 
   .lists{
-    flex:1 1 0;
-    min-height:0;
+    flex:1; min-height:0;
     display:grid;
     grid-template-columns:repeat(3, minmax(var(--colMinW), 1fr));
     gap:10px;
@@ -198,13 +216,13 @@
     .lists{grid-template-columns:repeat(1, minmax(var(--colMinW), 1fr));}
   }
 
-  /* ★ACを必ず最下段に固定 */
+  /* AC固定 */
   .acRow{
-    margin-top:auto;
-    flex:0 0 auto;
     display:grid;
     grid-template-columns:repeat(3,1fr);
     gap:10px;
+    flex:0 0 auto;
+    flex-shrink:0;
   }
   @media (orientation:portrait){
     .acRow{ grid-template-columns:repeat(1,1fr); }
@@ -255,11 +273,16 @@
     overflow:hidden;
     cursor:pointer;
     user-select:none;
-    touch-action: pan-y;
+    touch-action: pan-y; /* 縦スクロール優先 */
     background:transparent;
   }
   .row:last-child{border-bottom:none}
-  .row.active{background:rgba(20,70,160,.08); outline:3px solid rgba(20,70,160,.22); outline-offset:-3px;}
+
+  /* 選択中：薄グレー */
+  .row.active .rowMain{
+    background: linear-gradient(180deg, rgba(0,0,0,.06), rgba(0,0,0,.03));
+    box-shadow: inset 0 0 0 2px var(--activeBd);
+  }
 
   .rowMain{
     width:100%;
@@ -288,7 +311,6 @@
     align-items:center;
     justify-content:center;
     cursor:pointer;
-
     opacity:0;
     pointer-events:none;
     z-index:1;
@@ -324,8 +346,8 @@
   .numSpan{display:inline-block;max-width:100%}
 
   .acBtn{
-    height:50px;border-radius:14px;
-    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(230,235,245,.95));
+    height:52px;border-radius:14px;
+    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
     border:1px solid rgba(0,0,0,.22);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
@@ -339,12 +361,29 @@
     background:var(--glass);
     border:1px solid var(--bd);
     border-radius:16px;
-    padding:12px;
+    padding:10px;
     display:grid;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto auto 1fr auto;
     gap:10px;
     overflow:hidden;
   }
+
+  /* 入力ディスプレイ（縦でも横でも常に見える） */
+  .disp{
+    background:rgba(255,255,255,.50);
+    border:1px solid rgba(0,0,0,.20);
+    border-radius:14px;
+    padding:10px 12px;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+    overflow:hidden;
+  }
+  .disp.neg{ color: var(--neg); }
+  .dispSpan{ display:inline-block; max-width:100%; font-weight:1200; }
 
   .colTabs{
     display:none;
@@ -390,38 +429,37 @@
   .key{
     height:var(--keyH);
     border-radius:var(--keyRadius);
-    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(230,235,245,.95));
+    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
     border:1px solid rgba(0,0,0,.22);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
     font-weight:1200;
     cursor:pointer;user-select:none;
     overflow:hidden;
-    touch-action: manipulation;
   }
   .key .kspan{display:inline-block;max-width:100%;padding:0 6px;white-space:nowrap}
 
   .numKey{ font-size:var(--keyFS); color:#111; }
   .opKey{
-    background:linear-gradient(180deg, rgba(60,120,230,.95), rgba(30,80,180,.95));
+    background:linear-gradient(180deg, var(--btnOp1), var(--btnOp2));
     border-color:rgba(0,0,0,.22);
     font-size:var(--keyFSop);
     color:#111;
   }
   .funcKey{
-    background:linear-gradient(180deg, rgba(10,45,120,.85), rgba(5,25,70,.90));
+    background:linear-gradient(180deg, var(--btnFunc1), var(--btnFunc2));
     border-color:rgba(0,0,0,.35);
     font-size:var(--keyFSfunc);
     color:#fff;
   }
   .undoKey{
-    background:linear-gradient(180deg, rgba(255,150,40,.95), rgba(220,110,20,.95));
+    background:linear-gradient(180deg, var(--btnUndo1), var(--btnUndo2));
     border-color:rgba(0,0,0,.35);
     color:#fff;
     font-size:var(--keyFSfunc);
   }
   .redoKey{
-    background:linear-gradient(180deg, rgba(255,180,70,.95), rgba(230,120,30,.95));
+    background:linear-gradient(180deg, var(--btnRedo1), var(--btnRedo2));
     border-color:rgba(0,0,0,.35);
     color:#fff;
     font-size:var(--keyFSfunc);
@@ -506,6 +544,9 @@
       </div>
 
       <div class="calc">
+        <!-- 入力表示（縦の時もここに出す） -->
+        <div class="disp" id="disp"><span class="dispSpan" id="dispSpan">0</span></div>
+
         <div class="colTabs" id="colTabs"></div>
 
         <!-- 上：テンキー（配置変更しない） -->
@@ -615,6 +656,9 @@
   const tinyNote = $("tinyNote");
   const colTabsEl = $("colTabs");
 
+  const dispEl = $("disp");
+  const dispSpan = $("dispSpan");
+
   const backdrop = $("backdrop");
   const closeM = $("closeM");
   const cancelM = $("cancelM");
@@ -629,8 +673,8 @@
   const ac3 = $("ac3");
 
   // 入力状態
-  let entry = "";
-  let mode  = "num";   // "num" | "mul" | "div" | "sub"
+  let entry = "";        // 生入力（"0.00" 等を保持）
+  let mode  = "num";     // "num" | "add" | "mul" | "div" | "sub"
   let sign  = +1;
 
   // state
@@ -649,7 +693,7 @@
       tabs:Array.from({length:TAB_COUNT}, (_,i)=>({
         name:`List${i+1}`,
         cols:Array.from({length:COLS}, (__,c)=>({
-          rows: Array.from({length:DEFAULT_ROWS[c]}, ()=>({label:"", kind:"num", value:null}))
+          rows: Array.from({length:DEFAULT_ROWS[c]}, ()=>({label:"", kind:"num", value:null, disp:""}))
         }))
       })),
       links:Array.from({length:4}, ()=>({label:"", url:""})),
@@ -675,10 +719,19 @@
       if(!raw) return null;
       const obj = JSON.parse(raw);
       if(!obj.tabs || !obj.links || !obj.rowsByCol) return null;
+
+      // 旧データ互換（dispがない等）
       obj.tabs.forEach(t=>{
         t.cols.forEach((c, idx)=>{
           if(!c.rows){
-            c.rows = Array.from({length:(obj.rowsByCol?.[idx]||DEFAULT_ROWS[idx])}, ()=>({label:"", kind:"num", value:null}));
+            c.rows = Array.from({length:(obj.rowsByCol?.[idx]||DEFAULT_ROWS[idx])}, ()=>({label:"", kind:"num", value:null, disp:""}));
+          }else{
+            c.rows = c.rows.map(r=>({
+              label: r.label ?? "",
+              kind:  r.kind ?? "num",
+              value: (r.value===undefined ? null : r.value),
+              disp:  (r.disp ?? "")
+            }));
           }
         });
       });
@@ -699,15 +752,40 @@
 
   function normalizeRows(col, targetRows){
     col.rows = Array.isArray(col.rows) ? col.rows.slice(0, targetRows) : [];
-    while(col.rows.length < targetRows) col.rows.push({label:"", kind:"num", value:null});
+    while(col.rows.length < targetRows) col.rows.push({label:"", kind:"num", value:null, disp:""});
   }
 
-  function fmt(n){
+  // 数値表示（保存用のvalueとは別に、入力の見た目は disp を優先）
+  function fmtNumber(n){
     if(n===null || n===undefined) return "";
     if(!Number.isFinite(n)) return "Error";
     const [a,b]=String(n).split(".");
     const x = Number(a).toLocaleString("ja-JP");
     return b ? `${x}.${b}` : x;
+  }
+
+  // entry（"0.00","12.","0001" 等）の見た目を保ったまま 3桁カンマ
+  function fmtEntry(entryStr){
+    const s = String(entryStr ?? "");
+    if(!s) return "";
+    const neg = s.startsWith("-");
+    const body = neg ? s.slice(1) : s;
+
+    // "."だけ/不正はそのまま
+    if(body === ".") return (neg?"-":"") + "0.";
+
+    const hasDot = body.includes(".");
+    const [intPartRaw, decPartRaw] = body.split(".");
+    const intPart = intPartRaw === "" ? "0" : intPartRaw;
+    const intNum = Number(intPart);
+    const intFmt = Number.isFinite(intNum) ? intNum.toLocaleString("ja-JP") : intPart;
+
+    if(hasDot){
+      // 末尾 "." の維持
+      if(body.endsWith(".")) return (neg?"-":"") + intFmt + ".";
+      return (neg?"-":"") + intFmt + "." + (decPartRaw ?? "");
+    }
+    return (neg?"-":"") + intFmt;
   }
 
   function withinLimit(n){
@@ -723,6 +801,8 @@
         if(Number.isFinite(r.value)) total *= r.value;
       }else if(r.kind==="div"){
         if(Number.isFinite(r.value) && r.value!==0) total /= r.value;
+      }else{
+        // add は計算に影響しない（表示だけ）
       }
     }
     return total;
@@ -753,7 +833,7 @@
   function undo(){ const a=undoStack.pop(); if(!a) return; applyAction(a,"undo"); redoStack.push(a); }
   function redo(){ const a=redoStack.pop(); if(!a) return; applyAction(a,"redo"); undoStack.push(a); }
 
-  // ===== AutoFit（重いので “変わった要素だけ”） =====
+  // ===== AutoFit（必要箇所だけ） =====
   function fitSpan(span, box, maxPx, minPx){
     if(!span || !box) return;
 
@@ -797,6 +877,8 @@
     document.querySelectorAll(".topBox").forEach(box=>{
       fitSpan(box.querySelector(".topSpan"), box, cssNum("--topMax",46), cssNum("--topMin",18));
     });
+    fitSpan(dispSpan, dispEl, cssNum("--dispMax",52), cssNum("--dispMin",20));
+
     document.querySelectorAll(".numLine").forEach(box=>{
       fitSpan(box.querySelector(".numSpan"), box, cssNum("--numMax",30), cssNum("--numMin",12));
     });
@@ -805,7 +887,7 @@
       if(!span) return;
       const isOp  = k.classList.contains("opKey");
       const isFunc= k.classList.contains("funcKey") || k.classList.contains("undoKey") || k.classList.contains("redoKey") || k.classList.contains("eqKey");
-      const max = isOp ? cssNum("--keyFSop",40) : (isFunc ? cssNum("--keyFSfunc",36) : cssNum("--keyFS",38));
+      const max = isOp ? cssNum("--keyFSop",44) : (isFunc ? cssNum("--keyFSfunc",40) : cssNum("--keyFS",42));
       fitSpan(span, k, max, 18);
     });
   }
@@ -823,6 +905,7 @@
       d.onclick=()=>{
         activeTab=i; activeCol=0; activeRow=0;
         entry=""; mode="num"; sign=+1;
+        closeAllSwipes();
         save(); renderAll(true);
       };
       tabsEl.appendChild(d);
@@ -839,6 +922,7 @@
         activeCol=c;
         activeRow = Math.min(activeRow, getRows(activeCol)-1);
         entry=""; mode="num"; sign=+1;
+        closeAllSwipes();
         save();
         renderAll(true);
       };
@@ -868,16 +952,21 @@
     normalizeRows(col, getRows(activeCol));
     const before = {...col.rows[activeRow]};
     const after  = {...before, ...next};
-    if(before.label===after.label && before.kind===after.kind && before.value===after.value) return;
+
+    // disp 未指定なら空にしておく
+    if(after.disp === undefined) after.disp = "";
+
+    if(before.label===after.label && before.kind===after.kind && before.value===after.value && (before.disp||"")===(after.disp||"")) return;
 
     pushHistory({tab:activeTab, col:activeCol, row:activeRow, prev:before, next:after});
     col.rows[activeRow] = after;
     save();
     renderLists();
+    updateTiny();
+    updateDisp();
   }
 
-  // ===== 挿入/削除（列内固定行数のまま） =====
-  function blankRow(){ return {label:"", kind:"num", value:null}; }
+  function blankRow(){ return {label:"", kind:"num", value:null, disp:""}; }
 
   function insertRowAt(c, r){
     const tab = state.tabs[activeTab];
@@ -892,6 +981,7 @@
     activeCol = c;
     activeRow = r;
     entry=""; mode="num"; sign=+1;
+    closeAllSwipes();
     save();
     renderAll(true);
   }
@@ -909,43 +999,39 @@
     activeCol = c;
     activeRow = Math.min(r, col.rows.length-1);
     entry=""; mode="num"; sign=+1;
+    closeAllSwipes();
     save();
     renderAll(true);
   }
 
-  // ===== スワイプ削除：スライドした時だけ表示 =====
   function closeAllSwipes(exceptEl=null){
     document.querySelectorAll(".row.swiped").forEach(el=>{
       if(el!==exceptEl) el.classList.remove("swiped");
     });
   }
 
-  // ★iOSで確実に動くダブルタップ編集（pointerupで判定）
-  function attachLabelDoubleTap(labEl, c, r){
-    let lastT = 0, lastX = 0, lastY = 0;
+  // iOSダブルタップ保険（touchend で確実に拾う）
+  function attachLabelEditTriggers(labEl, c, r){
+    // PC: ダブルクリック
+    labEl.addEventListener("dblclick",(ev)=>{
+      ev.stopPropagation();
+      startLabelEdit(c,r);
+    });
 
-    labEl.addEventListener("pointerup", (ev)=>{
-      // mouseは普通に dblclick があるので不要
-      if(ev.pointerType === "mouse") return;
-
+    // iOS: ダブルタップ（touchend）
+    let lastTap = 0;
+    labEl.addEventListener("touchend",(ev)=>{
       const now = Date.now();
-      const dx = Math.abs(ev.clientX - lastX);
-      const dy = Math.abs(ev.clientY - lastY);
-
-      if(lastT && (now - lastT) < 360 && dx < 18 && dy < 18){
+      if(now - lastTap < 320){
         ev.preventDefault();
         ev.stopPropagation();
-        lastT = 0;
-        startLabelEdit(c, r);
-        return;
+        startLabelEdit(c,r);
       }
-
-      lastT = now;
-      lastX = ev.clientX;
-      lastY = ev.clientY;
+      lastTap = now;
     }, {passive:false});
   }
 
+  // rowのジェスチャー（スワイプ/長押し）は「ラベル触ってる時は開始しない」
   function attachSwipeAndLongPress(rowEl, c, r){
     let sx=0, sy=0;
     let tracking=false;
@@ -957,7 +1043,9 @@
     };
 
     rowEl.addEventListener("pointerdown",(e)=>{
+      // ラベル編集中/ラベルタップは row ジェスチャー開始しない
       if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
+      if(e.target && e.target.closest && e.target.closest(".label")) return;
 
       try{ rowEl.setPointerCapture?.(e.pointerId); }catch{}
 
@@ -1046,7 +1134,7 @@
       top.className="topBox"+(res<0?" neg":"");
       const topSpan=document.createElement("span");
       topSpan.className="topSpan";
-      topSpan.textContent = fmt(res) || "0";
+      topSpan.textContent = fmtNumber(res) || "0";
       top.appendChild(topSpan);
 
       const panel=document.createElement("div");
@@ -1069,9 +1157,11 @@
           }
           activeCol=c; activeRow=r;
           entry=""; mode="num"; sign=+1;
+          closeAllSwipes();
           save();
           renderLists();
           updateTiny();
+          updateDisp();
         };
 
         const delBtn=document.createElement("button");
@@ -1093,27 +1183,32 @@
         if(!t.trim()){ lab.classList.add("empty"); lab.innerHTML="&nbsp;"; }
         else lab.textContent=t;
 
-        // PC: ダブルクリック
-        lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
-        // iOS: ダブルタップ確実化
-        attachLabelDoubleTap(lab, c, r);
-
+        attachLabelEditTriggers(lab, c, r);
         labelLine.append(lab);
 
         const numLine=document.createElement("div");
         numLine.className="numLine";
 
         let show="";
+        // 表示優先：disp（入力途中含む）→ なければ value から
+        const disp = (it.disp ?? "").trim();
+
         if(it.kind==="num"){
-          if(Number.isFinite(it.value)) show = fmt(it.value);
-          if(Number.isFinite(it.value) && it.value<0) numLine.classList.add("neg");
+          if(disp) show = disp;
+          else if(Number.isFinite(it.value)) show = fmtNumber(it.value);
+          if((it.value<0) || (disp.startsWith("-"))) numLine.classList.add("neg");
+        }else if(it.kind==="add"){
+          show = "＋";
         }else if(it.kind==="sub"){
-          if(Number.isFinite(it.value)) { show = fmt(it.value); numLine.classList.add("neg"); }
+          if(disp) { show = disp; numLine.classList.add("neg"); }
+          else if(Number.isFinite(it.value)) { show = fmtNumber(it.value); numLine.classList.add("neg"); }
           else show = "－";
         }else if(it.kind==="mul"){
-          show = Number.isFinite(it.value) ? `×${fmt(it.value)}` : "×";
+          if(disp) show = "×" + disp;
+          else show = Number.isFinite(it.value) ? `×${fmtNumber(it.value)}` : "×";
         }else if(it.kind==="div"){
-          show = Number.isFinite(it.value) ? `÷${fmt(it.value)}` : "÷";
+          if(disp) show = "÷" + disp;
+          else show = Number.isFinite(it.value) ? `÷${fmtNumber(it.value)}` : "÷";
         }
 
         const numSpan=document.createElement("span");
@@ -1152,11 +1247,12 @@
     normalizeRows(col, getRows(idx));
     for(let r=0;r<col.rows.length;r++){
       const before={...col.rows[r]};
-      const after ={label:before.label, kind:"num", value:null};
+      const after ={label:before.label, kind:"num", value:null, disp:""};
       pushHistory({tab:activeTab, col:idx, row:r, prev:before, next:after});
       col.rows[r]=after;
     }
     entry=""; mode="num"; sign=+1;
+    closeAllSwipes();
     save(); renderAll(true);
   }
 
@@ -1167,13 +1263,38 @@
     tinyNote.textContent = `対象：${tab.name} / 列${activeCol+1} / ${label ? label : "（未入力）"}`;
   }
 
+  function updateDisp(){
+    const tab = state.tabs[activeTab];
+    const it  = tab.cols[activeCol].rows[activeRow];
+
+    // 入力中は entry を最優先（0.00/12. を維持）
+    let txt = "";
+    if(entry){
+      txt = fmtEntry((sign<0 && mode==="num" ? "-" : "") + entry);
+    }else{
+      // 行の表示を優先
+      if(it.kind==="add") txt = "＋";
+      else if(it.kind==="sub" && (!Number.isFinite(it.value)) && !(it.disp||"").trim()) txt = "－";
+      else if(it.kind==="mul" && (!Number.isFinite(it.value)) && !(it.disp||"").trim()) txt = "×";
+      else if(it.kind==="div" && (!Number.isFinite(it.value)) && !(it.disp||"").trim()) txt = "÷";
+      else if((it.disp||"").trim()) txt = (it.kind==="mul" ? "×" : it.kind==="div" ? "÷" : "") + it.disp.trim();
+      else if(Number.isFinite(it.value)) txt = fmtNumber(it.value);
+      else txt = "0";
+    }
+
+    dispSpan.textContent = txt || "0";
+    dispEl.classList.toggle("neg", String(txt).trim().startsWith("-"));
+    requestAnimationFrame(applyAutoFitVisible);
+  }
+
   function startLabelEdit(c,r){
     const tab = state.tabs[activeTab];
     const col = tab.cols[c];
     normalizeRows(col, getRows(c));
 
     activeCol=c; activeRow=r;
-    save(); renderLists(); updateTiny();
+    closeAllSwipes();
+    save(); renderLists(); updateTiny(); updateDisp();
 
     const colEls = [...listsEl.querySelectorAll(".col")];
     const colEl = isPortrait() ? colEls[0] : colEls[c];
@@ -1198,7 +1319,7 @@
         col.rows[r].label=afterLabel;
         save();
       }
-      renderLists(); updateTiny();
+      renderLists(); updateTiny(); updateDisp();
     };
 
     labEl.onkeydown=(e)=>{
@@ -1212,6 +1333,9 @@
   function appendDigit(d){
     const before = entry;
 
+    // add は表示だけなので、数字が来たら num に戻す
+    if(mode==="add"){ mode="num"; sign=+1; }
+
     if(d==="00"){
       if(entry==="" || entry==="0") return;
       entry += "00";
@@ -1224,50 +1348,94 @@
       entry += d;
     }
 
-    const n = Number(entry);
+    // 入力途中（"12."）は Numberで 12 になるが表示は entryで維持
+    const n = Number(entry.endsWith(".") ? entry.slice(0,-1) : entry);
     if(!Number.isFinite(n) || !withinLimit(n)){
       entry = before;
       return;
     }
 
+    const disp = fmtEntry(entry);
     if(mode==="num"){
-      setRow({kind:"num", value: sign*n});
+      const v = sign * Number(entry.endsWith(".") ? entry.slice(0,-1) : entry);
+      if(withinLimit(v)){
+        setRow({kind:"num", value:v, disp: disp});
+      }else{
+        entry = before;
+      }
     }else if(mode==="mul"){
-      setRow({kind:"mul", value: n});
+      setRow({kind:"mul", value: Number(entry.endsWith(".") ? entry.slice(0,-1) : entry), disp: disp});
     }else if(mode==="div"){
-      setRow({kind:"div", value: n});
+      setRow({kind:"div", value: Number(entry.endsWith(".") ? entry.slice(0,-1) : entry), disp: disp});
     }else if(mode==="sub"){
-      setRow({kind:"sub", value: -n});
+      const v = -Number(entry.endsWith(".") ? entry.slice(0,-1) : entry);
+      if(withinLimit(v)){
+        // sub は表示もマイナスにしたい
+        setRow({kind:"sub", value:v, disp: "-" + disp.replace(/^\-/, "")});
+      }else{
+        entry = before;
+      }
     }
+
+    updateDisp();
   }
 
   function clearAll(){
     entry=""; mode="num"; sign=+1;
-    setRow({kind:"num", value:0});
+    // 0 をちゃんと表示したいので disp も "0"
+    setRow({kind:"num", value:0, disp:"0"});
   }
 
   function toggleNeg(){
-    if(mode!=="num") { mode="num"; entry=""; sign=+1; }
-    sign*=-1;
+    // いま入力中なら entry の符号だけ切り替え（表示を維持）
+    if(entry){
+      sign *= -1;
+      updateDisp();
+      return;
+    }
+
+    // 入力なし：数値があるなら反転。なければ "－" マーカーは出さない（±は値の反転のみ）
     const tab = state.tabs[activeTab];
     const cur = tab.cols[activeCol].rows[activeRow];
     if(Number.isFinite(cur.value)){
       const nv = -cur.value;
-      if(withinLimit(nv)) setRow({kind:"num", value:nv});
+      if(withinLimit(nv)){
+        const disp = cur.disp ? (cur.disp.startsWith("-") ? cur.disp.slice(1) : "-" + cur.disp) : fmtNumber(nv);
+        setRow({kind:"num", value:nv, disp: disp});
+      }
     }
   }
 
-  function pressAdd(){ entry=""; mode="num"; sign=+1; }
-  function pressSub(){ entry=""; mode="sub"; sign=-1; setRow({kind:"sub", value:null}); }
-  function pressMul(){ entry=""; mode="mul"; setRow({kind:"mul", value:null}); }
-  function pressDiv(){ entry=""; mode="div"; setRow({kind:"div", value:null}); }
+  // ★ここが重要：＋も「数字なしで表示」する（subと同じ扱い）
+  function pressAdd(){
+    entry=""; mode="add"; sign=+1;
+    setRow({kind:"add", value:null, disp:""});
+    updateDisp();
+  }
+  function pressSub(){
+    entry=""; mode="sub"; sign=-1;
+    setRow({kind:"sub", value:null, disp:""});
+    updateDisp();
+  }
+  function pressMul(){
+    entry=""; mode="mul"; sign=+1;
+    setRow({kind:"mul", value:null, disp:""});
+    updateDisp();
+  }
+  function pressDiv(){
+    entry=""; mode="div"; sign=+1;
+    setRow({kind:"div", value:null, disp:""});
+    updateDisp();
+  }
 
   function enter(){
     entry=""; mode="num"; sign=+1;
     activeRow = Math.min(getRows(activeCol)-1, activeRow+1);
+    closeAllSwipes();
     save();
     renderLists();
     updateTiny();
+    updateDisp();
   }
 
   function handleKey(k){
@@ -1283,6 +1451,7 @@
     if(k==="ENTER") return enter();
   }
 
+  // クリックでキー入力（配置はそのまま）
   document.addEventListener("click",(e)=>{
     const btn=e.target.closest("[data-k]");
     if(!btn) return;
@@ -1346,7 +1515,7 @@
       const t=state.tabs[activeTab];
       t.cols.forEach((c, ci)=>{
         normalizeRows(c, getRows(ci));
-        c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
+        c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null, disp:""}));
       });
       entry=""; mode="num"; sign=+1;
       save(); renderAll(true);
@@ -1356,7 +1525,7 @@
       state.tabs.forEach(t=>{
         t.cols.forEach((c, ci)=>{
           normalizeRows(c, getRows(ci));
-          c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
+          c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null, disp:""}));
         });
       });
       entry=""; mode="num"; sign=+1;
@@ -1395,21 +1564,27 @@
   };
 
   function renderAll(force=false){
-    if(force) lastRenderKey = "";
+    if(force){
+      lastRenderKey = "";
+      document.querySelectorAll("[data-prev-text]").forEach(el=>{
+        delete el.dataset.prevText;
+        delete el.dataset.prevW;
+      });
+    }
     renderTabs();
     renderColTabs();
     renderLinks();
     renderLists();
     updateTiny();
+    updateDisp();
     requestAnimationFrame(applyAutoFitVisible);
   }
 
-  // resize（回転含む）をdebounceして重さ回避
+  // resize（回転含む）をdebounce
   let resizeTimer = null;
   window.addEventListener("resize", ()=>{
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(()=>{
-      renderColTabs();
       renderAll(true);
     }, 120);
   });
