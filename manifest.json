@@ -1,7 +1,8 @@
 {
   "name": "三連電卓",
   "short_name": "三連電卓",
-  "start_url": "./",
+  "start_url": "/sanren/",
+  "scope": "/sanren/",
   "display": "standalone",
   "background_color": "#c77c44",
   "theme_color": "#c77c44",
