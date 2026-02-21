@@ -91,17 +91,22 @@
     height:100%;
     overflow:hidden;
     overscroll-behavior: none;
-    /* ★touch-action を html/body に強く入れない（iOSのダブルタップ系が死ぬことがある） */
   }
-  body{ width:100%; }
+  body{
+    width:100%;
+    background:linear-gradient(180deg,var(--wood1),var(--wood2)); /* ★白地が見えない保険 */
+  }
 
   .frame{
     height:100%;
     overflow:hidden;
+    /* ★SafeAreaはframe側に吸収（中に余白が出ない） */
     padding:10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
     max-width:1360px;
     margin:0 auto;
   }
+
   @supports (height: 100dvh){
     .frame{ height:100dvh; }
   }
@@ -115,7 +120,6 @@
     background:linear-gradient(180deg,var(--wood1),var(--wood2));
     border-radius:20px;
     padding:12px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom)); /* ★ホームバー保険 */
     display:flex;
     flex-direction:column;
     gap:10px;
@@ -174,7 +178,6 @@
     overflow:hidden;
   }
 
-  /* ===== 左：lists + AC（ACを必ず下に固定） ===== */
   .leftWrap{
     min-height:0;
     display:flex;
@@ -184,7 +187,7 @@
   }
 
   .lists{
-    flex:1 1 0;              /* ★ここ重要：残り領域を使う/縮む */
+    flex:1 1 0;
     min-height:0;
     display:grid;
     grid-template-columns:repeat(3, minmax(var(--colMinW), 1fr));
@@ -195,13 +198,13 @@
     .lists{grid-template-columns:repeat(1, minmax(var(--colMinW), 1fr));}
   }
 
+  /* ★ACを必ず最下段に固定 */
   .acRow{
-    margin-top:auto;         /* ★必ず一番下へ */
+    margin-top:auto;
     flex:0 0 auto;
     display:grid;
     grid-template-columns:repeat(3,1fr);
     gap:10px;
-    padding-bottom: max(0px, env(safe-area-inset-bottom));
   }
   @media (orientation:portrait){
     .acRow{ grid-template-columns:repeat(1,1fr); }
@@ -252,7 +255,7 @@
     overflow:hidden;
     cursor:pointer;
     user-select:none;
-    touch-action: pan-y;     /* ★縦スクロール優先 */
+    touch-action: pan-y;
     background:transparent;
   }
   .row:last-child{border-bottom:none}
@@ -322,13 +325,12 @@
 
   .acBtn{
     height:50px;border-radius:14px;
-    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(230,235,245,.95));
     border:1px solid rgba(0,0,0,.22);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
     font-weight:1100;font-size:32px;color:#1f3a8a;
     cursor:pointer;user-select:none;
-    touch-action: manipulation;
   }
 
   /* ===== 右：電卓（配置は絶対に変えない） ===== */
@@ -366,7 +368,6 @@
     text-align:center;
     cursor:pointer;
     user-select:none;
-    touch-action: manipulation;
   }
   .colTab.active{
     background:linear-gradient(180deg, rgba(90,140,230,.85), rgba(60,110,210,.85));
@@ -389,38 +390,38 @@
   .key{
     height:var(--keyH);
     border-radius:var(--keyRadius);
-    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(230,235,245,.95));
     border:1px solid rgba(0,0,0,.22);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
     font-weight:1200;
     cursor:pointer;user-select:none;
     overflow:hidden;
-    touch-action: manipulation; /* ★iOSでクリック死を防ぐ */
+    touch-action: manipulation;
   }
   .key .kspan{display:inline-block;max-width:100%;padding:0 6px;white-space:nowrap}
 
   .numKey{ font-size:var(--keyFS); color:#111; }
   .opKey{
-    background:linear-gradient(180deg, var(--btnOp1), var(--btnOp2));
+    background:linear-gradient(180deg, rgba(60,120,230,.95), rgba(30,80,180,.95));
     border-color:rgba(0,0,0,.22);
     font-size:var(--keyFSop);
     color:#111;
   }
   .funcKey{
-    background:linear-gradient(180deg, var(--btnFunc1), var(--btnFunc2));
+    background:linear-gradient(180deg, rgba(10,45,120,.85), rgba(5,25,70,.90));
     border-color:rgba(0,0,0,.35);
     font-size:var(--keyFSfunc);
     color:#fff;
   }
   .undoKey{
-    background:linear-gradient(180deg, var(--btnUndo1), var(--btnUndo2));
+    background:linear-gradient(180deg, rgba(255,150,40,.95), rgba(220,110,20,.95));
     border-color:rgba(0,0,0,.35);
     color:#fff;
     font-size:var(--keyFSfunc);
   }
   .redoKey{
-    background:linear-gradient(180deg, var(--btnRedo1), var(--btnRedo2));
+    background:linear-gradient(180deg, rgba(255,180,70,.95), rgba(230,120,30,.95));
     border-color:rgba(0,0,0,.35);
     color:#fff;
     font-size:var(--keyFSfunc);
@@ -919,16 +920,29 @@
     });
   }
 
-  // iOSでも「文字編集」を確実にする：ダブルタップ保険
+  // ★iOSで確実に動くダブルタップ編集（pointerupで判定）
   function attachLabelDoubleTap(labEl, c, r){
-    let last = 0;
-    labEl.addEventListener("click", (ev)=>{
+    let lastT = 0, lastX = 0, lastY = 0;
+
+    labEl.addEventListener("pointerup", (ev)=>{
+      // mouseは普通に dblclick があるので不要
+      if(ev.pointerType === "mouse") return;
+
       const now = Date.now();
-      if(now - last < 360){
+      const dx = Math.abs(ev.clientX - lastX);
+      const dy = Math.abs(ev.clientY - lastY);
+
+      if(lastT && (now - lastT) < 360 && dx < 18 && dy < 18){
+        ev.preventDefault();
         ev.stopPropagation();
-        startLabelEdit(c,r);
+        lastT = 0;
+        startLabelEdit(c, r);
+        return;
       }
-      last = now;
+
+      lastT = now;
+      lastX = ev.clientX;
+      lastY = ev.clientY;
     }, {passive:false});
   }
 
@@ -1081,7 +1095,7 @@
 
         // PC: ダブルクリック
         lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
-        // iOS保険: ダブルタップ相当
+        // iOS: ダブルタップ確実化
         attachLabelDoubleTap(lab, c, r);
 
         labelLine.append(lab);
@@ -1095,7 +1109,7 @@
           if(Number.isFinite(it.value) && it.value<0) numLine.classList.add("neg");
         }else if(it.kind==="sub"){
           if(Number.isFinite(it.value)) { show = fmt(it.value); numLine.classList.add("neg"); }
-          else show = "－"; // ★マイナス単押し表示
+          else show = "－";
         }else if(it.kind==="mul"){
           show = Number.isFinite(it.value) ? `×${fmt(it.value)}` : "×";
         }else if(it.kind==="div"){
@@ -1244,7 +1258,7 @@
   }
 
   function pressAdd(){ entry=""; mode="num"; sign=+1; }
-  function pressSub(){ entry=""; mode="sub"; sign=-1; setRow({kind:"sub", value:null}); } // ★単押しで「－」が出る
+  function pressSub(){ entry=""; mode="sub"; sign=-1; setRow({kind:"sub", value:null}); }
   function pressMul(){ entry=""; mode="mul"; setRow({kind:"mul", value:null}); }
   function pressDiv(){ entry=""; mode="div"; setRow({kind:"div", value:null}); }
 
@@ -1269,15 +1283,6 @@
     if(k==="ENTER") return enter();
   }
 
-  /* ★iOSで click が死ぬ/遅延する事があるので pointerdown を主にする（配置は変えない） */
-  document.addEventListener("pointerdown",(e)=>{
-    const btn=e.target.closest("[data-k]");
-    if(!btn) return;
-    e.preventDefault();
-    handleKey(btn.getAttribute("data-k"));
-  }, {passive:false});
-
-  /* PCなど click だけの環境用の保険 */
   document.addEventListener("click",(e)=>{
     const btn=e.target.closest("[data-k]");
     if(!btn) return;
@@ -1390,13 +1395,7 @@
   };
 
   function renderAll(force=false){
-    if(force){
-      lastRenderKey = "";
-      document.querySelectorAll("[data-prev-text]").forEach(el=>{
-        delete el.dataset.prevText;
-        delete el.dataset.prevW;
-      });
-    }
+    if(force) lastRenderKey = "";
     renderTabs();
     renderColTabs();
     renderLinks();
