@@ -684,7 +684,10 @@
       obj.tabs.forEach(t=>{
         t.cols.forEach((c, idx)=>{
           if(!c.rows){
-            c.rows = Array.from({length:(obj.rowsByCol?.[idx]||DEFAULT_ROWS[idx])}, ()=>({label:"", kind:"num", value:null}));
+            c.rows = Array.from(
+              {length:(obj.rowsByCol?.[idx]||DEFAULT_ROWS[idx])},
+              ()=>({label:"", kind:"num", value:null})
+            );
           }
         });
       });
@@ -723,7 +726,8 @@
   function calcResult(col){
     let total = 0;
     for(const r of col.rows){
-      if(r.kind==="num" || r.kind==="sub"){
+      // ✅ADD(＋表示用)も合算扱い（valueが入ったらnumで上書きされる想定）
+      if(r.kind==="num" || r.kind==="sub" || r.kind==="add"){
         if(Number.isFinite(r.value)) total += r.value;
       }else if(r.kind==="mul"){
         if(Number.isFinite(r.value)) total *= r.value;
@@ -1099,6 +1103,9 @@
         if(it.kind==="num"){
           if(Number.isFinite(it.value)) show = fmt(it.value);
           if(Number.isFinite(it.value) && it.value<0) numLine.classList.add("neg");
+        }else if(it.kind==="add"){
+          // ✅これが欲しかったやつ：＋を「数字の欄」に表示
+          show = Number.isFinite(it.value) ? fmt(it.value) : "＋";
         }else if(it.kind==="sub"){
           if(Number.isFinite(it.value)) { show = fmt(it.value); numLine.classList.add("neg"); }
           else show = "－";
@@ -1228,7 +1235,7 @@
     }
 
     if(mode==="num"){
-      setRow({kind:"num", value: sign*n});
+      setRow({kind:"num", value: sign*n}); // ADDの後でも、入力したらnumで上書きされる
     }else if(mode==="mul"){
       setRow({kind:"mul", value: n});
     }else if(mode==="div"){
@@ -1255,7 +1262,11 @@
     }
   }
 
-  function pressAdd(){ entry=""; mode="num"; sign=+1; }
+  // ✅ここが本命：＋を「数字欄」に出す
+  function pressAdd(){
+    entry=""; mode="num"; sign=+1;
+    setRow({kind:"add", value:null}); // ← これで表示が「＋」になる
+  }
   function pressSub(){ entry=""; mode="sub"; sign=-1; setRow({kind:"sub", value:null}); }
   function pressMul(){ entry=""; mode="mul"; setRow({kind:"mul", value:null}); }
   function pressDiv(){ entry=""; mode="div"; setRow({kind:"div", value:null}); }
