@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
+  <!-- ✅ズーム不要：ダブルタップズーム等を抑止（文字入力の邪魔を減らす） -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
 
   <!-- PWA設定 -->
@@ -25,19 +26,11 @@
     --bd:rgba(0,0,0,.18);
     --neg:#d92d20;
 
-    /* ===== 全体の余白（safe-area考慮） ===== */
-    --outerPad: 10px;
-    --appPad: 12px;
-    --appGap: 10px;
+    /* ✅右電卓を少し大きめに（キー配置は変えない） */
+    --calcW: clamp(320px, 34vw, 460px);
+    --colMinW: 260px;
 
-    /* ✅右電卓幅：全iPadで破綻しにくい clamp */
-    --calcW: clamp(300px, 32vw, 440px);
-
-    /* 左の列の最小幅：iPad mini を落とさない */
-    --colMinW: 240px;
-
-    /* 行高さ */
-    --rowH: 50px;
+    --rowH: 52px;
     --labelFS: 14px;
 
     /* 数字表示 */
@@ -55,11 +48,8 @@
     --keyFSfunc: 36px;
     --keyRadius: 14px;
 
-    /* ✅ACが切れないように：横は控えめ（後述のlandscapeでさらに調整） */
-    --keyH: clamp(56px, 7.2vh, 88px);
-
-    /* ===== AC行 ===== */
-    --acH: clamp(44px, 6vh, 54px);
+    /* ✅keyHはJSで横画面時に “縦ピッタリ” に上書きされる */
+    --keyH: clamp(66px, 8.4vh, 92px);
 
     /* ===== ボタン配色 ===== */
     --btnGrey1: rgba(255,255,255,.98);
@@ -77,47 +67,32 @@
     --btnRedo1: rgba(255,180,70,.95);
     --btnRedo2: rgba(230,120,30,.95);
 
+    --tabBlue:#ffffff;
+
     /* スワイプ削除 */
     --delW: 86px;
     --delBg: #e11d48;
   }
 
-  /* ✅縦：1列表示＋列切替。ACまで必ず見えるよう全体をやや詰める */
+  /* ✅横画面：右(電卓)を狭く、左(列)を広く */
+  @media (orientation:landscape){
+    :root{
+      --calcW: clamp(240px, 26vw, 340px);
+      --colMinW: 280px;
+    }
+  }
+
+  /* 縦：オリジナル寄せ（1列表示＋列切替） */
   @media (orientation:portrait){
     :root{
-      --calcW: clamp(300px, 44vw, 420px);
-      --colMinW: 320px;
-
-      --rowH: 48px;
+      --calcW: 340px;
+      --colMinW: 360px;
+      --rowH: 50px;
+      --keyH: clamp(64px, 7.6vh, 92px);
       --gap: 9px;
-      --keyH: clamp(56px, 6.6vh, 86px);
       --keyFS: 40px;
       --keyFSop: 42px;
       --keyFSfunc: 38px;
-
-      --appPad: 10px;
-      --appGap: 10px;
-    }
-  }
-
-  /* ✅横：ACが切れないようにキー/隙間を少しだけ詰める（全iPad共通） */
-  @media (orientation:landscape){
-    :root{
-      --gap: 8px;
-      --keyH: clamp(52px, 6.4vh, 80px);
-      --rowH: 48px;
-      --appPad: 10px;
-      --appGap: 10px;
-    }
-  }
-
-  /* ✅横が低い（Split View等）ときはさらに詰める */
-  @media (orientation:landscape) and (max-height: 720px){
-    :root{
-      --gap: 7px;
-      --keyH: clamp(48px, 6.0vh, 72px);
-      --rowH: 46px;
-      --acH: clamp(40px, 5.6vh, 48px);
     }
   }
 
@@ -129,27 +104,18 @@
     overflow:hidden;
     overscroll-behavior: none;
     -webkit-text-size-adjust: 100%;
-    background:linear-gradient(180deg,var(--wood1),var(--wood2)); /* ✅白余白を消す */
   }
   body{ width:100%; }
 
-  /* ✅safe-area を外側パディングに吸収 */
   .frame{
     height:100%;
     overflow:hidden;
-    padding:
-      calc(var(--outerPad) + env(safe-area-inset-top))
-      calc(var(--outerPad) + env(safe-area-inset-right))
-      calc(var(--outerPad) + env(safe-area-inset-bottom))
-      calc(var(--outerPad) + env(safe-area-inset-left));
+    padding:10px;
     max-width:1360px;
     margin:0 auto;
   }
   @supports (height: 100dvh){
     .frame{ height:100dvh; }
-  }
-  @supports (height: 100svh){
-    .frame{ height:100svh; }
   }
   @supports (-webkit-touch-callout: none){
     .frame{ height:-webkit-fill-available; }
@@ -160,10 +126,10 @@
     min-height:0;
     background:linear-gradient(180deg,var(--wood1),var(--wood2));
     border-radius:20px;
-    padding:var(--appPad);
+    padding:12px;
     display:flex;
     flex-direction:column;
-    gap:var(--appGap);
+    gap:10px;
     overflow:hidden;
   }
 
@@ -215,22 +181,21 @@
   .grid{
     flex:1; min-height:0;
     display:grid;
-    grid-template-columns: minmax(0,1fr) var(--calcW); /* ✅はみ出し/被り防止 */
+    grid-template-columns: 1fr var(--calcW);
     gap:12px;
     overflow:hidden;
   }
 
-  /* ✅ACを絶対表示：leftWrap を grid にして「1fr + auto」固定 */
   .leftWrap{
     min-height:0;
-    display:grid;
-    grid-template-rows: 1fr auto;
+    display:flex;
+    flex-direction:column;
     gap:10px;
     overflow:hidden;
   }
 
   .lists{
-    min-height:0;
+    flex:1; min-height:0;
     display:grid;
     grid-template-columns:repeat(3, minmax(var(--colMinW), 1fr));
     gap:10px;
@@ -242,12 +207,11 @@
 
   /* ✅ACは必ず表示＆押し出されない */
   .acRow{
-    height:var(--acH);
     display:grid;
     grid-template-columns:repeat(3,1fr);
     gap:10px;
     flex:0 0 auto;
-    align-self:stretch;
+    flex-shrink:0;
   }
   @media (orientation:portrait){
     .acRow{ grid-template-columns:repeat(1,1fr); }
@@ -259,8 +223,8 @@
     border:1px solid var(--bd);
     border-radius:16px;
     padding:8px;
-    display:grid;
-    grid-template-rows: auto 1fr;
+    display:flex;
+    flex-direction:column;
     gap:8px;
     min-height:0;
     overflow:hidden;
@@ -277,13 +241,12 @@
     font-variant-numeric: tabular-nums;
     white-space:nowrap; overflow:hidden;
     color:#111;
-    min-height:44px;
   }
   .topBox.neg{color:var(--neg)}
   .topSpan{display:inline-block;max-width:100%}
 
   .panel{
-    min-height:0;
+    flex:1; min-height:0;
     background:var(--panel);
     border:1px solid rgba(0,0,0,.12);
     border-radius:14px;
@@ -303,6 +266,7 @@
   }
   .row:last-child{border-bottom:none}
 
+  /* ✅選択中を薄いグレー（ここが消えてたら絶対ここで復活） */
   .row.active{
     background:rgba(0,0,0,.05);
     outline:3px solid rgba(0,0,0,.10);
@@ -370,15 +334,12 @@
   .numSpan{display:inline-block;max-width:100%}
 
   .acBtn{
-    height:100%;
-    border-radius:14px;
+    height:50px;border-radius:14px;
     background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
     border:1px solid rgba(0,0,0,.22);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
-    font-weight:1100;
-    font-size:32px;
-    color:#1f3a8a;
+    font-weight:1100;font-size:32px;color:#1f3a8a;
     cursor:pointer;user-select:none;
   }
 
@@ -537,7 +498,7 @@
       <div class="leftWrap">
         <div class="lists" id="lists"></div>
 
-        <!-- ✅ACは常に表示（leftWrapがgridなので押し出されない） -->
+        <!-- ✅ACは常に表示 -->
         <div class="acRow" id="acRow">
           <div class="acBtn" id="ac1">AC</div>
           <div class="acBtn" id="ac2">AC</div>
@@ -851,6 +812,39 @@
     return window.matchMedia && window.matchMedia("(orientation:portrait)").matches;
   }
 
+  /* ✅横画面：キーを “縦いっぱい” に埋める（右の空き潰し） */
+  function applyLandscapeKeyboardFill(){
+    if (isPortrait()) return;
+
+    const calc = document.querySelector(".calc");
+    if(!calc) return;
+
+    const calcH = calc.clientHeight;
+
+    const colTabs = document.getElementById("colTabs");
+    const colTabsH = (colTabs && getComputedStyle(colTabs).display !== "none") ? colTabs.offsetHeight : 0;
+
+    const st = getComputedStyle(calc);
+    const padT = parseFloat(st.paddingTop)||0;
+    const padB = parseFloat(st.paddingBottom)||0;
+    const gap  = parseFloat(st.rowGap)||0;
+
+    const gap2 = cssNum("--gap", 10);
+
+    // 4行(数字) + 3行(演算) = 7行
+    const ROWS = 7;
+
+    const calcRowGaps = (colTabsH ? 2 : 1) * gap;
+    const innerGaps   = (3 + 2) * gap2;
+
+    const avail = calcH - colTabsH - padT - padB - calcRowGaps - innerGaps;
+
+    let keyH = Math.floor(avail / ROWS);
+    keyH = Math.max(54, keyH);
+
+    document.documentElement.style.setProperty("--keyH", keyH + "px");
+  }
+
   function renderTabs(){
     tabsEl.innerHTML="";
     state.tabs.forEach((t,i)=>{
@@ -955,8 +949,11 @@
     });
   }
 
+  /* ✅ダブルタップで編集（iOSの dblclick 不安定対策）
+     - 長押しは挿入なので触らない */
   function attachLabelDoubleTap(labEl, c, r){
     let last = 0;
+
     const fire = (ev)=>{
       const now = Date.now();
       if(now - last < 350){
@@ -966,6 +963,7 @@
       }
       last = now;
     };
+
     labEl.addEventListener("touchend", fire, {passive:false});
     labEl.addEventListener("click", fire, {passive:false});
   }
@@ -1113,7 +1111,9 @@
         if(!t.trim()){ lab.classList.add("empty"); lab.innerHTML="&nbsp;"; }
         else lab.textContent=t;
 
+        // PC: ダブルクリック
         lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
+        // iOS: ダブルタップ
         attachLabelDoubleTap(lab, c, r);
 
         labelLine.append(lab);
@@ -1155,6 +1155,7 @@
       if(!row) closeAllSwipes();
     };
 
+    // AC：確認なし（常に押せる）
     ac1.onclick=()=> clearCol( portrait ? activeCol : 0 );
     ac2.onclick=()=> clearCol(1);
     ac3.onclick=()=> clearCol(2);
@@ -1217,6 +1218,7 @@
     labEl.onblur=finish;
   }
 
+  // ===== 入力（上限1000万） =====
   function appendDigit(d){
     const before = entry;
 
@@ -1249,6 +1251,7 @@
     }
   }
 
+  /* ✅C押下：0表示にしないで真っさらに */
   function clearAll(){
     entry=""; mode="num"; sign=+1;
     setRow({kind:"num", value:null});
@@ -1296,6 +1299,7 @@
     handleKey(btn.getAttribute("data-k"));
   });
 
+  // ===== modal =====
   function openModal(){ buildModal(); backdrop.style.display="flex"; }
   function closeModal(){ backdrop.style.display="none"; }
 
@@ -1408,6 +1412,10 @@
         delete el.dataset.prevW;
       });
     }
+
+    // ✅横画面は先に keyH を決める（空き無し）
+    applyLandscapeKeyboardFill();
+
     renderTabs();
     renderColTabs();
     renderLinks();
@@ -1419,9 +1427,11 @@
   window.addEventListener("resize", ()=>{
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(()=>{
+      // ✅回転/サイズ変更時：縦埋め計算→再描画
+      applyLandscapeKeyboardFill();
       renderColTabs();
       renderAll(true);
-    }, 140);
+    }, 120);
   });
 
   document.addEventListener("pointerdown",(e)=>{
@@ -1429,6 +1439,7 @@
     closeAllSwipes();
   }, {passive:true});
 
+  // 初期描画
   save();
   renderAll(true);
 })();
