@@ -633,30 +633,27 @@
     flex-wrap:wrap;
     border-top:1px solid #eee;
   }
-    /* ===== iPad mini 横画面対策 ===== */
-@media screen 
-  and (min-width: 768px) 
-  and (max-width: 1024px) 
-  and (orientation: landscape) {
 
-  :root{
-    --mainCols: 1fr 1fr;   /* 左を少し縮める */
-    --gap: 8px;
-  }
+  /* ===== ✅iPad mini 横画面対策（ここだけ変更）===== */
+  @media screen
+    and (min-width: 768px)
+    and (max-width: 1024px)
+    and (orientation: landscape){
 
-  .main{
-    padding: 8px 10px 60px;
-  }
+    :root{
+      --calcW: 320px;   /* 右（電卓）幅を固定して被り防止 */
+      --colMinW: 190px; /* 左3列の最小幅を少し下げる */
+    }
 
-  .listWrap{
-    font-size: 12px;
-  }
+    .grid{
+      grid-template-columns: minmax(0,1fr) var(--calcW);
+      gap:10px;
+    }
 
-  .keypad{
-    transform: scale(0.92);
-    transform-origin: right top;
+    .lists{
+      grid-template-columns: repeat(3, minmax(var(--colMinW), 1fr));
+    }
   }
-}
   </style>
 </head>
 
