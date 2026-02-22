@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
+  <!-- ✅ズーム不要：ダブルタップズーム等を抑止（文字入力の邪魔を減らす） -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
 
   <!-- PWA設定 -->
@@ -29,20 +30,7 @@
     --calcW: clamp(320px, 34vw, 460px);
     --colMinW: 260px;
 
-    /* ✅行高さ：JSが上書きする（デフォは保険） */
     --rowH: 52px;
-
-    /* ✅キー高さ：JSが上書きする（デフォは保険） */
-    --keyH: 78px;
-
-    /* 調整用（JSで参照） */
-    --rowHminP: 34;  /* portrait 最小 */
-    --rowHmaxP: 52;  /* portrait 最大 */
-    --rowHminL: 42;  /* landscape 最小 */
-    --rowHmaxL: 56;  /* landscape 最大 */
-    --keyHmin: 54;
-    --keyHmax: 92;
-
     --labelFS: 14px;
 
     /* 数字表示 */
@@ -59,6 +47,7 @@
     --keyFSop: 40px;
     --keyFSfunc: 36px;
     --keyRadius: 14px;
+    --keyH: clamp(66px, 8.4vh, 92px);
 
     /* ===== ボタン配色 ===== */
     --btnGrey1: rgba(255,255,255,.98);
@@ -76,9 +65,33 @@
     --btnRedo1: rgba(255,180,70,.95);
     --btnRedo2: rgba(230,120,30,.95);
 
+    --tabBlue:#ffffff;
+
     /* スワイプ削除 */
     --delW: 86px;
     --delBg: #e11d48;
+  }
+
+  /* ✅横画面は “電卓＋ACが必ず1枚” を最優先で縮める */
+  @media (orientation:landscape){
+    :root{
+      --calcW: clamp(300px, 33vw, 420px);
+      --gap: 8px;
+      --keyH: clamp(54px, 6.2vh, 78px); /* ←電卓が切れない核心 */
+      --keyRadius: 12px;
+    }
+    .frame{ padding:8px; }
+    .app{ padding:10px; gap:8px; }
+    .calc{ padding:10px; gap:8px; }
+  }
+
+  /* ✅高さが低い（Safariバー等）時の保険：強制的にさらに縮める */
+  @media (max-height: 740px){
+    :root{
+      --gap: 7px;
+      --keyH: clamp(50px, 5.8vh, 72px);
+    }
+    .calc{ padding:9px; gap:7px; }
   }
 
   /* 縦：オリジナル寄せ（1列表示＋列切替） */
@@ -86,6 +99,8 @@
     :root{
       --calcW: 340px;
       --colMinW: 360px;
+      --rowH: 50px;
+      --keyH: clamp(64px, 7.6vh, 92px);
       --gap: 9px;
       --keyFS: 40px;
       --keyFSop: 42px;
@@ -348,8 +363,7 @@
     border-radius:16px;
     padding:12px;
     display:grid;
-    /* ✅ colTabs / padNum / padOps の3段。padNum/padOpsを均等配分 */
-    grid-template-rows: auto 1fr 1fr;
+    grid-template-rows: auto auto 1fr;
     gap:10px;
     overflow:hidden;
   }
@@ -504,7 +518,7 @@
         </div>
       </div>
 
-      <div class="calc" id="calc">
+      <div class="calc">
         <div class="colTabs" id="colTabs"></div>
 
         <!-- 上：テンキー（配置変更しない） -->
@@ -568,7 +582,7 @@
       <div class="sec">
         <div class="secTitle">枠数（列ごと）</div>
         <div class="grid2" id="rowsForm"></div>
-        <div class="small">列1/列2/列3 を別々に設定できます（最大40）。</div>
+        <div class="small">※この画面は残してるけど、表示側は「横7/8・縦最大」に自動で合わせます。</div>
       </div>
 
       <div class="sec">
@@ -810,72 +824,6 @@
     return window.matchMedia && window.matchMedia("(orientation:portrait)").matches;
   }
 
-  /* ✅今回の要件：ACまで必ず1画面に収める（縦横）＋ 横は7〜8行が見えるくらい */
-  function adjustDynamicSizes(){
-    const root = document.documentElement;
-
-    // ---- 左（行高さ） ----
-    const anyCol = listsEl.querySelector(".col");
-    const anyPanel = listsEl.querySelector(".panel");
-    if(anyCol && anyPanel){
-      const panelH = anyPanel.clientHeight;
-      if(panelH > 0){
-        if(isPortrait()){
-          const minH = cssNum("--rowHminP", 34);
-          const maxH = cssNum("--rowHmaxP", 52);
-
-          // 縦は「ACが入る範囲で最大表示」＝行をできるだけ詰める
-          // ただし小さくなりすぎ防止で minH を下限にする
-          let rowH = minH;
-
-          // 余裕があれば少し上げる（見た目が潰れすぎないように）
-          // “最低でも10行相当の表示余地”を想定（足りない端末は minH のまま）
-          const rowsAtMin = Math.max(1, Math.floor(panelH / minH));
-          const denom = Math.max(10, rowsAtMin);
-          rowH = Math.floor(panelH / denom);
-          rowH = Math.max(minH, Math.min(maxH, rowH));
-
-          root.style.setProperty("--rowH", rowH + "px");
-        }else{
-          const minH = cssNum("--rowHminL", 42);
-          const maxH = cssNum("--rowHmaxL", 56);
-
-          // 横は「7〜8行」狙い（8行基準。足りない端末は小さくなる）
-          const targetRows = 8;
-          let rowH = Math.floor(panelH / targetRows);
-          rowH = Math.max(minH, Math.min(maxH, rowH));
-
-          root.style.setProperty("--rowH", rowH + "px");
-        }
-      }
-    }
-
-    // ---- 右（キー高さ） ----
-    const calc = document.getElementById("calc");
-    if(calc){
-      const gap = cssNum("--gap", 10);
-      const keyMin = cssNum("--keyHmin", 54);
-      const keyMax = cssNum("--keyHmax", 92);
-
-      const colTabs = document.getElementById("colTabs");
-      const colTabsH = (colTabs && getComputedStyle(colTabs).display !== "none") ? colTabs.offsetHeight : 0;
-
-      // calc の内側（clientHeight）から colTabs 分を引く
-      const calcH = calc.clientHeight;
-      const avail = Math.max(0, calcH - colTabsH);
-
-      // キーは 7段（padNum=4段, padOps=3段）
-      const totalRows = 7;
-      // gap は段間：padNum内3 + padOps内2 + padNum/padOps間1 = 6
-      const totalGaps = 6;
-
-      let keyH = Math.floor((avail - gap * totalGaps - 6 /*微調整*/ ) / totalRows);
-      keyH = Math.max(keyMin, Math.min(keyMax, keyH));
-
-      root.style.setProperty("--keyH", keyH + "px");
-    }
-  }
-
   function renderTabs(){
     tabsEl.innerHTML="";
     state.tabs.forEach((t,i)=>{
@@ -980,7 +928,7 @@
     });
   }
 
-  /* ダブルタップで編集（既存のまま：ラベルをダブルタップで編集） */
+  /* ✅ダブルタップで編集（iOSの dblclick 不安定対策） */
   function attachLabelDoubleTap(labEl, c, r){
     let last = 0;
 
@@ -1054,6 +1002,53 @@
     rowEl.addEventListener("lostpointercapture", end);
   }
 
+  /* ✅枠数を「横=7/8」「縦=ACまで入る最大」に自動調整 */
+  let _autoRowsLock = false;
+  function autoAdjustRowsToFit(){
+    if(_autoRowsLock) return;
+
+    requestAnimationFrame(()=>{
+      const portrait = isPortrait();
+      const firstCol = listsEl.querySelector(".col");
+      if(!firstCol) return;
+
+      const panel = firstCol.querySelector(".panel");
+      if(!panel) return;
+
+      const tmpRow = firstCol.querySelector(".row");
+      const rowH = tmpRow ? tmpRow.getBoundingClientRect().height : 52;
+
+      const fit = Math.max(1, Math.floor(panel.clientHeight / rowH));
+
+      let desired;
+      if(!portrait){
+        desired = (fit >= 8) ? 8 : (fit >= 7 ? 7 : fit);
+      }else{
+        desired = Math.min(MAX_ROWS, fit);
+      }
+
+      const cur = state.rowsByCol || [...DEFAULT_ROWS];
+      const next = [desired, desired, desired];
+
+      if(cur[0]===next[0] && cur[1]===next[1] && cur[2]===next[2]) return;
+
+      _autoRowsLock = true;
+      try{
+        state.rowsByCol = next;
+
+        state.tabs.forEach(t=>{
+          for(let c=0;c<COLS;c++) normalizeRows(t.cols[c], getRows(c));
+        });
+
+        activeRow = clamp(activeRow, 0, getRows(activeCol)-1);
+        save();
+        renderAll(true);
+      } finally {
+        setTimeout(()=>{ _autoRowsLock = false; }, 60);
+      }
+    });
+  }
+
   function renderLists(){
     const renderKey = [
       activeTab, activeCol, activeRow,
@@ -1063,7 +1058,7 @@
     ].join("|");
 
     if(renderKey === lastRenderKey){
-      requestAnimationFrame(()=>{ adjustDynamicSizes(); applyAutoFitVisible(); });
+      requestAnimationFrame(applyAutoFitVisible);
       return;
     }
     lastRenderKey = renderKey;
@@ -1143,6 +1138,7 @@
 
         lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
         attachLabelDoubleTap(lab, c, r);
+
         labelLine.append(lab);
 
         const numLine=document.createElement("div");
@@ -1186,7 +1182,7 @@
     ac2.onclick=()=> clearCol(1);
     ac3.onclick=()=> clearCol(2);
 
-    requestAnimationFrame(()=>{ adjustDynamicSizes(); applyAutoFitVisible(); });
+    requestAnimationFrame(applyAutoFitVisible);
   }
 
   function clearCol(idx){
@@ -1277,6 +1273,7 @@
     }
   }
 
+  /* ✅C押下：0表示にしないで真っさらに */
   function clearAll(){
     entry=""; mode="num"; sign=+1;
     setRow({kind:"num", value:null});
@@ -1290,6 +1287,8 @@
     if(Number.isFinite(cur.value)){
       const nv = -cur.value;
       if(withinLimit(nv)) setRow({kind:"num", value:nv});
+    }else{
+      // 値が無い時は 0 を出さず、符号状態だけ保持（表示は空のまま）
     }
   }
 
@@ -1441,7 +1440,10 @@
     renderColTabs();
     renderLinks();
     renderLists();
-    requestAnimationFrame(()=>{ adjustDynamicSizes(); applyAutoFitVisible(); });
+    requestAnimationFrame(applyAutoFitVisible);
+
+    // ✅ここで「横7/8・縦最大」に自動調整（ACまで1枚固定）
+    autoAdjustRowsToFit();
   }
 
   let resizeTimer = null;
@@ -1450,10 +1452,7 @@
     resizeTimer = setTimeout(()=>{
       renderColTabs();
       renderAll(true);
-    }, 140);
-  });
-  window.addEventListener("orientationchange", ()=>{
-    setTimeout(()=>renderAll(true), 220);
+    }, 120);
   });
 
   document.addEventListener("pointerdown",(e)=>{
