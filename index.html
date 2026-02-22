@@ -70,28 +70,10 @@
     /* スワイプ削除 */
     --delW: 86px;
     --delBg: #e11d48;
-  }
 
-  /* ✅横画面は “電卓＋ACが必ず1枚” を最優先で縮める */
-  @media (orientation:landscape){
-    :root{
-      --calcW: clamp(300px, 33vw, 420px);
-      --gap: 8px;
-      --keyH: clamp(54px, 6.2vh, 78px); /* ←電卓が切れない核心 */
-      --keyRadius: 12px;
-    }
-    .frame{ padding:8px; }
-    .app{ padding:10px; gap:8px; }
-    .calc{ padding:10px; gap:8px; }
-  }
-
-  /* ✅高さが低い（Safariバー等）時の保険：強制的にさらに縮める */
-  @media (max-height: 740px){
-    :root{
-      --gap: 7px;
-      --keyH: clamp(50px, 5.8vh, 72px);
-    }
-    .calc{ padding:9px; gap:7px; }
+    /* ✅ iPhone/iPad PWA 下見切れ対策 */
+    --safeB: env(safe-area-inset-bottom, 0px);
+    --safeT: env(safe-area-inset-top, 0px);
   }
 
   /* 縦：オリジナル寄せ（1列表示＋列切替） */
@@ -105,6 +87,26 @@
       --keyFS: 40px;
       --keyFSop: 42px;
       --keyFSfunc: 38px;
+    }
+  }
+
+  /* ✅ 横向きは「必ず収める」ために電卓を少し詰める（配置は変えない） */
+  @media (orientation:landscape){
+    :root{
+      --gap: 8px;
+      --keyH: clamp(54px, 6.8vh, 74px);
+      --keyFS: 34px;
+      --keyFSop: 36px;
+      --keyFSfunc: 32px;
+    }
+  }
+  @media (orientation:landscape) and (max-height:520px){
+    :root{
+      --gap: 7px;
+      --keyH: clamp(48px, 6.2vh, 66px);
+      --keyFS: 32px;
+      --keyFSop: 34px;
+      --keyFSfunc: 30px;
     }
   }
 
@@ -138,14 +140,17 @@
     min-height:0;
     background:linear-gradient(180deg,var(--wood1),var(--wood2));
     border-radius:20px;
+    /* ✅下の安全領域ぶんだけ足す（ACが切れない） */
     padding:12px;
+    padding-bottom: calc(12px + var(--safeB));
+    padding-top: calc(12px + var(--safeT));
     display:flex;
     flex-direction:column;
     gap:10px;
     overflow:hidden;
   }
 
-  .topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap; flex:0 0 auto;}
   .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .tab{
     min-width:92px;
@@ -257,18 +262,27 @@
   .topBox.neg{color:var(--neg)}
   .topSpan{display:inline-block;max-width:100%}
 
+  /* ✅下の白い余りを消す：パネル背景を「罫線」にする */
   .panel{
     flex:1; min-height:0;
-    background:var(--panel);
     border:1px solid rgba(0,0,0,.12);
     border-radius:14px;
-    overflow:auto;
+    overflow:hidden;            /* ✅スクロールしない（1画面に収める） */
     -webkit-overflow-scrolling: touch;
+
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,.96) 0px,
+        rgba(255,255,255,.96) calc(var(--rowH) - 1px),
+        rgba(234,234,234,.95) calc(var(--rowH) - 1px),
+        rgba(234,234,234,.95) var(--rowH)
+      );
   }
 
   .row{
-    border-bottom:1px solid #eaeaea;
-    min-height:var(--rowH);
+    border-bottom:1px solid transparent; /* 背景が罫線なので不要（透明にする） */
+    height:var(--rowH);
     position:relative;
     overflow:hidden;
     cursor:pointer;
@@ -287,11 +301,11 @@
 
   .rowMain{
     width:100%;
+    height:100%;
     padding:8px 10px;
-    min-height:var(--rowH);
     display:flex;flex-direction:column;justify-content:space-between;
     gap:4px;
-    background:var(--panel);
+    background:transparent;     /* ✅罫線背景を生かす */
     position:relative;
     z-index:2;
     transition:transform .14s ease;
@@ -354,6 +368,9 @@
     font-weight:1100;font-size:32px;color:#1f3a8a;
     cursor:pointer;user-select:none;
   }
+  @media (orientation:landscape){
+    .acBtn{ height:46px; font-size:30px; }
+  }
 
   /* ===== 右：電卓（配置は絶対に変えない） ===== */
   .calc{
@@ -366,6 +383,9 @@
     grid-template-rows: auto auto 1fr;
     gap:10px;
     overflow:hidden;
+  }
+  @media (orientation:landscape){
+    .calc{ padding:10px; gap:8px; }
   }
 
   .colTabs{
@@ -582,7 +602,7 @@
       <div class="sec">
         <div class="secTitle">枠数（列ごと）</div>
         <div class="grid2" id="rowsForm"></div>
-        <div class="small">※この画面は残してるけど、表示側は「横7/8・縦最大」に自動で合わせます。</div>
+        <div class="small">保存上の枠数です。表示は「1画面に収まる分」に自動で間引きます（横は最大8行）。</div>
       </div>
 
       <div class="sec">
@@ -651,6 +671,9 @@
 
   // render最適化
   let lastRenderKey = "";
+
+  // ✅「1画面に収める」表示行数（毎回計算）
+  let fitRowsCached = null;
 
   function initial(){
     return {
@@ -931,7 +954,6 @@
   /* ✅ダブルタップで編集（iOSの dblclick 不安定対策） */
   function attachLabelDoubleTap(labEl, c, r){
     let last = 0;
-
     const fire = (ev)=>{
       const now = Date.now();
       if(now - last < 350){
@@ -941,7 +963,6 @@
       }
       last = now;
     };
-
     labEl.addEventListener("touchend", fire, {passive:false});
     labEl.addEventListener("click", fire, {passive:false});
   }
@@ -1002,59 +1023,59 @@
     rowEl.addEventListener("lostpointercapture", end);
   }
 
-  /* ✅枠数を「横=7/8」「縦=ACまで入る最大」に自動調整 */
-  let _autoRowsLock = false;
-  function autoAdjustRowsToFit(){
-    if(_autoRowsLock) return;
+  // ✅ 1画面に収める行数を計算（横は最大8）
+  function computeFitRows(){
+    const app = document.querySelector(".app");
+    const topbar = document.querySelector(".topbar");
+    const grid = document.querySelector(".grid");
+    const leftWrap = document.querySelector(".leftWrap");
+    const acRow = document.querySelector(".acRow");
 
-    requestAnimationFrame(()=>{
-      const portrait = isPortrait();
-      const firstCol = listsEl.querySelector(".col");
-      if(!firstCol) return;
+    if(!app || !topbar || !grid || !leftWrap || !acRow) return isPortrait() ? 12 : 8;
 
-      const panel = firstCol.querySelector(".panel");
-      if(!panel) return;
+    const rowH = cssNum("--rowH", 52);
 
-      const tmpRow = firstCol.querySelector(".row");
-      const rowH = tmpRow ? tmpRow.getBoundingClientRect().height : 52;
+    const appH = app.clientHeight;
+    const topH = topbar.offsetHeight;
+    const gapApp = 10;     // .app gap
+    const gridH = Math.max(0, appH - topH - gapApp);
 
-      const fit = Math.max(1, Math.floor(panel.clientHeight / rowH));
+    const acH = acRow.offsetHeight;
+    const gapLeft = 10;    // .leftWrap gap
+    const listsH = Math.max(0, gridH - acH - gapLeft);
 
-      let desired;
-      if(!portrait){
-        desired = (fit >= 8) ? 8 : (fit >= 7 ? 7 : fit);
-      }else{
-        desired = Math.min(MAX_ROWS, fit);
-      }
+    // col内の topBox 高さを測る（無ければ仮）
+    const sampleTop = document.querySelector(".col .topBox");
+    const topBoxH = sampleTop ? sampleTop.offsetHeight : 64;
 
-      const cur = state.rowsByCol || [...DEFAULT_ROWS];
-      const next = [desired, desired, desired];
+    const colPad = 16;     // 8px * 2
+    const colGap = 8;      // .col gap
+    const panelH = Math.max(0, listsH - colPad - topBoxH - colGap);
 
-      if(cur[0]===next[0] && cur[1]===next[1] && cur[2]===next[2]) return;
+    let fit = Math.floor(panelH / rowH);
+    if(!Number.isFinite(fit) || fit < 1) fit = 1;
 
-      _autoRowsLock = true;
-      try{
-        state.rowsByCol = next;
-
-        state.tabs.forEach(t=>{
-          for(let c=0;c<COLS;c++) normalizeRows(t.cols[c], getRows(c));
-        });
-
-        activeRow = clamp(activeRow, 0, getRows(activeCol)-1);
-        save();
-        renderAll(true);
-      } finally {
-        setTimeout(()=>{ _autoRowsLock = false; }, 60);
-      }
-    });
+    if(!isPortrait()){
+      fit = Math.min(fit, 8); // ✅横は7〜8希望 → 上限8
+      if(fit < 7) fit = Math.max(1, fit); // どうしても無理な端末でも落ちない
+    }
+    return fit;
   }
 
   function renderLists(){
+    // ✅fitRows 変化で再描画するためキーに入れる
+    const nextFit = computeFitRows();
+    if(fitRowsCached !== nextFit){
+      fitRowsCached = nextFit;
+      lastRenderKey = ""; // 強制更新
+    }
+
     const renderKey = [
       activeTab, activeCol, activeRow,
       state.rowsByCol?.join(","),
       isPortrait() ? "P":"L",
-      state.savedAt
+      state.savedAt,
+      fitRowsCached
     ].join("|");
 
     if(renderKey === lastRenderKey){
@@ -1080,6 +1101,9 @@
       acRowEl.style.gridTemplateColumns = "repeat(3, 1fr)";
     }
 
+    // ✅表示する行数（保存行数に対して「収まる分だけ」）
+    const showRows = (c)=> Math.min(getRows(c), fitRowsCached || 1);
+
     colsToShow.forEach((c)=>{
       const col = tab.cols[c];
       const colEl=document.createElement("div");
@@ -1096,7 +1120,9 @@
       const panel=document.createElement("div");
       panel.className="panel";
 
-      for(let r=0;r<col.rows.length;r++){
+      const limit = showRows(c);
+
+      for(let r=0;r<limit;r++){
         const it = col.rows[r];
 
         const row=document.createElement("div");
@@ -1178,6 +1204,7 @@
       if(!row) closeAllSwipes();
     };
 
+    // AC：確認なし（常に押せる）
     ac1.onclick=()=> clearCol( portrait ? activeCol : 0 );
     ac2.onclick=()=> clearCol(1);
     ac3.onclick=()=> clearCol(2);
@@ -1287,8 +1314,6 @@
     if(Number.isFinite(cur.value)){
       const nv = -cur.value;
       if(withinLimit(nv)) setRow({kind:"num", value:nv});
-    }else{
-      // 値が無い時は 0 を出さず、符号状態だけ保持（表示は空のまま）
     }
   }
 
@@ -1431,6 +1456,7 @@
   function renderAll(force=false){
     if(force){
       lastRenderKey = "";
+      fitRowsCached = null;
       document.querySelectorAll("[data-prev-text]").forEach(el=>{
         delete el.dataset.prevText;
         delete el.dataset.prevW;
@@ -1441,9 +1467,6 @@
     renderLinks();
     renderLists();
     requestAnimationFrame(applyAutoFitVisible);
-
-    // ✅ここで「横7/8・縦最大」に自動調整（ACまで1枚固定）
-    autoAdjustRowsToFit();
   }
 
   let resizeTimer = null;
@@ -1459,6 +1482,12 @@
     if(e.target.closest(".row")) return;
     closeAllSwipes();
   }, {passive:true});
+
+  // ✅PWA起動直後にサイズがズレることがあるので、少し遅延して再描画
+  window.addEventListener("load", ()=>{
+    setTimeout(()=>renderAll(true), 50);
+    setTimeout(()=>renderAll(true), 250);
+  });
 
   save();
   renderAll(true);
