@@ -2,7 +2,6 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <!-- ✅ズーム不要：ダブルタップズーム等を抑止 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
 
   <!-- PWA設定 -->
@@ -17,16 +16,17 @@
 
   <style>
   :root{
-    /* ===== ノジマ風カラー ===== */
+    /* ===== ノジマ風カラー（そのまま） ===== */
     --wood1:#0d3f91;
     --wood2:#082b66;
 
     --glass:rgba(255,255,255,.12);
-    --panel:rgba(255,255,255,.95);
+    --panel:rgba(255,255,255,.96);   /* ✅白面を少し強く */
     --bd:rgba(0,0,0,.18);
+    --bd2:rgba(0,0,0,.22);           /* ✅境界強化 */
     --neg:#d92d20;
 
-    /* ===== ここが “全iPadで勝手に最適” の核 ===== */
+    /* ===== レイアウト ===== */
     --calcW: clamp(300px, 28vw, 380px);
     --colMinW: 240px;
     --safeB: env(safe-area-inset-bottom, 0px);
@@ -48,8 +48,6 @@
     --keyFSop: 40px;
     --keyFSfunc: 36px;
     --keyRadius: 14px;
-
-    /* ✅キー高さ：縦方向に “なるべく目一杯” 使う（でも上限あり） */
     --keyH: clamp(64px, 8.6vh, 92px);
 
     /* ===== ボタン配色 ===== */
@@ -75,7 +73,6 @@
     --delBg: #e11d48;
   }
 
-  /* ✅縦：1列表示＋列切替（“ACまで1枚”を優先） */
   @media (orientation:portrait){
     :root{
       --calcW: 340px;
@@ -89,12 +86,12 @@
     }
   }
 
-  /* ✅高さが厳しい端末だけ（mini等）キーを少しだけ縮める */
   @media (max-height: 720px){
     :root{ --keyH: clamp(56px, 7.2vh, 86px); }
   }
 
   *{ box-sizing:border-box; }
+
   html, body{
     margin:0;
     padding:0;
@@ -103,9 +100,11 @@
     overscroll-behavior: none;
     -webkit-text-size-adjust: 100%;
     background:linear-gradient(180deg,var(--wood1),var(--wood2));
+
+    /* ✅字面をオリジナル寄せ：iOS標準に統一 */
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
   }
 
-  /* ✅Safari/PWAの “下の余白” を物理的に潰す（固定レイアウト） */
   .frame{
     position:fixed;
     inset:0;
@@ -134,9 +133,9 @@
     min-width:92px;
     padding:8px 10px;
     border-radius:12px;
-    background:rgba(255,255,255,.88);
-    border:1px solid rgba(0,0,0,.20);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+    background:rgba(255,255,255,.90);
+    border:1px solid var(--bd2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 2px 8px rgba(0,0,0,.10);
     font-weight:900;
     color:#0b3a8a;
     text-align:center;
@@ -150,14 +149,14 @@
     background:linear-gradient(180deg, #2e6cff, #0b3a8a);
     color:#fff;
   }
-  .topRight{margin-left:auto;display:flex;gap:10px;align-items:center}
 
+  .topRight{margin-left:auto;display:flex;gap:10px;align-items:center}
   .gear{
     width:52px;height:42px;border-radius:12px;
     display:grid;place-items:center;cursor:pointer;user-select:none;
-    background:rgba(255,255,255,.80);
-    border:1px solid rgba(0,0,0,.22);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 3px 10px rgba(0,0,0,.10);
+    background:rgba(255,255,255,.85);
+    border:1px solid var(--bd2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 3px 10px rgba(0,0,0,.12);
     font-size:20px;font-weight:900;
   }
 
@@ -165,10 +164,10 @@
   .linkBtn{
     width:64px;height:42px;border-radius:10px;
     display:grid;place-items:center;
-    background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(230,230,230,.92));
-    border:1px solid rgba(0,0,0,.22);
+    background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(230,230,230,.92));
+    border:1px solid var(--bd2);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
-    font-weight:1000;color:#5b2b86;cursor:pointer;user-select:none;
+    font-weight:900;color:#5b2b86;cursor:pointer;user-select:none;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;
   }
   .linkBtn.disabled{color:#667085}
@@ -201,7 +200,6 @@
     .lists{grid-template-columns:repeat(1, minmax(var(--colMinW), 1fr));}
   }
 
-  /* ✅ACは必ず表示＆押し出されない */
   .acRow{
     display:grid;
     grid-template-columns:repeat(3,1fr);
@@ -216,7 +214,7 @@
   .col{
     min-width:var(--colMinW);
     background:var(--glass);
-    border:1px solid var(--bd);
+    border:1px solid var(--bd2);
     border-radius:16px;
     padding:8px;
     display:flex;
@@ -224,16 +222,17 @@
     gap:8px;
     min-height:0;
     overflow:hidden;
+    box-shadow: 0 6px 18px rgba(0,0,0,.12);
   }
 
   .topBox{
-    background:rgba(255,255,255,.50);
-    border:1px solid rgba(0,0,0,.20);
+    background:rgba(255,255,255,.80);  /* ✅合計面を明るく */
+    border:1px solid var(--bd2);
     border-radius:14px;
     padding:8px 10px;
     display:flex;align-items:center;justify-content:flex-end;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
-    font-weight:1100;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.65);
+    font-weight:1000;
     font-variant-numeric: tabular-nums;
     white-space:nowrap; overflow:hidden;
     color:#111;
@@ -244,14 +243,14 @@
   .panel{
     flex:1; min-height:0;
     background:var(--panel);
-    border:1px solid rgba(0,0,0,.12);
+    border:1px solid rgba(0,0,0,.16); /* ✅枠を少し濃く */
     border-radius:14px;
     overflow:auto;
     -webkit-overflow-scrolling: touch;
   }
 
   .row{
-    border-bottom:1px solid #eaeaea;
+    border-bottom:1px solid rgba(0,0,0,.08); /* ✅区切りを少し強く */
     min-height:var(--rowH);
     position:relative;
     overflow:hidden;
@@ -262,18 +261,20 @@
   }
   .row:last-child{border-bottom:none}
 
-  /* ✅選択中を薄いグレー（rowだけだとrowMainに覆われるのでrowMain側にも当てる） */
+  /* ✅ゼブラ（薄く） */
+  .row:nth-child(even) .rowMain{ background:rgba(0,0,0,.018); }
+
   .row.active{
     outline:3px solid rgba(0,0,0,.10);
     outline-offset:-3px;
   }
   .row.active .rowMain{
-    background:rgba(0,0,0,.05);
+    background:rgba(0,0,0,.06);
   }
 
   .rowMain{
     width:100%;
-    padding:8px 10px;
+    padding:10px 12px; /* ✅余白を少し増やして読みやすく */
     min-height:var(--rowH);
     display:flex;flex-direction:column;justify-content:space-between;
     gap:4px;
@@ -318,12 +319,13 @@
 
   .numLine{
     display:flex;align-items:flex-end;justify-content:flex-end;
-    font-weight:1100;
+    font-weight:1000; /* ✅数字を太く */
     font-variant-numeric: tabular-nums;
     white-space:nowrap;
     overflow:hidden;
     color:#111;
     min-height:24px;
+    letter-spacing: .2px;
   }
   .numLine.neg{color:var(--neg)}
   .numSpan{display:inline-block;max-width:100%}
@@ -331,25 +333,26 @@
   .acBtn{
     height:50px;border-radius:14px;
     background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
-    border:1px solid rgba(0,0,0,.22);
+    border:1px solid var(--bd2);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
-    font-weight:1100;font-size:32px;color:#1f3a8a;
+    font-weight:1000;font-size:32px;color:#1f3a8a;
     cursor:pointer;user-select:none;
     width:100%;
   }
 
-  /* ===== 右：電卓（配置は変えない） ===== */
+  /* ===== 右：電卓 ===== */
   .calc{
     min-height:0;
     background:var(--glass);
-    border:1px solid var(--bd);
+    border:1px solid var(--bd2);
     border-radius:16px;
     padding:12px;
     display:grid;
     grid-template-rows: auto 1fr 1fr;
     gap:10px;
     overflow:hidden;
+    box-shadow: 0 6px 18px rgba(0,0,0,.12);
   }
 
   .colTabs{
@@ -366,9 +369,9 @@
     min-width:92px;
     padding:8px 10px;
     border-radius:10px;
-    background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(235,235,235,.85));
-    border:1px solid rgba(0,0,0,.25);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 2px 7px rgba(0,0,0,.10);
+    background:linear-gradient(180deg, rgba(255,255,255,.90), rgba(235,235,235,.88));
+    border:1px solid var(--bd2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.65), 0 2px 7px rgba(0,0,0,.10);
     font-weight:1000;
     color:#0b3a8a;
     text-align:center;
@@ -376,19 +379,11 @@
     user-select:none;
   }
   .colTab.active{
-    background:linear-gradient(180deg, rgba(90,140,230,.85), rgba(60,110,210,.85));
+    background:linear-gradient(180deg, rgba(90,140,230,.90), rgba(60,110,210,.90));
     color:#fff;
   }
 
-  .padNum{
-    display:grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap:var(--gap);
-    align-content:stretch;
-    grid-auto-rows: 1fr;
-    min-height:0;
-  }
-  .padOps{
+  .padNum, .padOps{
     display:grid;
     grid-template-columns: repeat(3, 1fr);
     gap:var(--gap);
@@ -402,18 +397,16 @@
     min-height:var(--keyH);
     border-radius:var(--keyRadius);
     background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
-    border:1px solid rgba(0,0,0,.22);
+    border:1px solid var(--bd2);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
-    font-weight:1200;
+    font-weight:1100;
     cursor:pointer;user-select:none;
     overflow:hidden;
   }
   .key .kspan{display:inline-block;max-width:100%;padding:0 6px;white-space:nowrap}
-
   .numKey{ font-size:var(--keyFS); color:#111; }
 
-  /* ✅演算キー：＋が消える/薄い対策（白＋軽い影で確実に見える） */
   .opKey{
     background:linear-gradient(180deg, var(--btnOp1), var(--btnOp2));
     border-color:rgba(0,0,0,.22);
@@ -503,7 +496,6 @@
       <div class="leftWrap">
         <div class="lists" id="lists"></div>
 
-        <!-- ✅ACは常に表示 -->
         <div class="acRow" id="acRow">
           <div class="acBtn" id="ac1">AC</div>
           <div class="acBtn" id="ac2">AC</div>
@@ -514,7 +506,6 @@
       <div class="calc">
         <div class="colTabs" id="colTabs"></div>
 
-        <!-- 上：テンキー（配置変更しない） -->
         <div class="padNum" id="padNum">
           <div class="key numKey" data-k="7"><span class="kspan">7</span></div>
           <div class="key numKey" data-k="8"><span class="kspan">8</span></div>
@@ -533,7 +524,6 @@
           <div class="key numKey" data-k="."><span class="kspan">.</span></div>
         </div>
 
-        <!-- 下：演算（9個）（配置変更しない） -->
         <div class="padOps" id="padOps">
           <div class="key opKey" data-k="NEG"><span class="kspan">±</span></div>
           <div class="key opKey" data-k="MUL"><span class="kspan">×</span></div>
@@ -552,7 +542,6 @@
   </div>
 </div>
 
-<!-- modal -->
 <div class="backdrop" id="backdrop">
   <div class="modal" role="dialog" aria-modal="true">
     <div class="mHead">
@@ -603,7 +592,6 @@
   const DEFAULT_ROWS = [15,15,15];
   const MAX_ROWS = 40;
 
-  // 入力上限：1千万
   const MAX_ABS = 10000000;
 
   const HISTORY_MAX = 400;
@@ -631,21 +619,17 @@
   const ac2 = $("ac2");
   const ac3 = $("ac3");
 
-  // ✅編集中フラグ：iPadの「ダブルタップ→直後のclickで再描画」事故を防ぐ
   let isEditingLabel = false;
 
-  // 入力状態
   let entry = "";
   let mode  = "num";   // "num" | "mul" | "div" | "sub"
   let sign  = +1;
 
-  // state
   let state = load() || initial();
   let activeTab = clamp(state.activeTab, 0, TAB_COUNT-1);
   let activeCol = clamp(state.activeCol, 0, COLS-1);
   let activeRow = clamp(state.activeRow, 0, getRows(activeCol)-1);
 
-  // render最適化
   let lastRenderKey = "";
 
   function initial(){
@@ -726,7 +710,6 @@
   function calcResult(col){
     let total = 0;
     for(const r of col.rows){
-      // ✅ADD(＋表示用)も合算扱い（valueが入ったらnumで上書きされる想定）
       if(r.kind==="num" || r.kind==="sub" || r.kind==="add"){
         if(Number.isFinite(r.value)) total += r.value;
       }else if(r.kind==="mul"){
@@ -1054,7 +1037,6 @@
         rowMain.className="rowMain";
 
         rowMain.onclick=()=>{
-          // ✅ラベル編集中は行クリックで再描画させない（iPadの入力事故防止）
           if(isEditingLabel) return;
           if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
           if(row.classList.contains("swiped")){
@@ -1086,12 +1068,8 @@
         if(!t.trim()){ lab.classList.add("empty"); lab.innerHTML="&nbsp;"; }
         else lab.textContent=t;
 
-        // ✅編集操作のときはクリックを上に伝播させない（誤選択防止）
         lab.onclick=(ev)=>ev.stopPropagation();
-
-        // PC: ダブルクリック
         lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
-        // iOS: ダブルタップ
         attachLabelDoubleTap(lab, c, r);
 
         labelLine.append(lab);
@@ -1104,7 +1082,6 @@
           if(Number.isFinite(it.value)) show = fmt(it.value);
           if(Number.isFinite(it.value) && it.value<0) numLine.classList.add("neg");
         }else if(it.kind==="add"){
-          // ✅これが欲しかったやつ：＋を「数字の欄」に表示
           show = Number.isFinite(it.value) ? fmt(it.value) : "＋";
         }else if(it.kind==="sub"){
           if(Number.isFinite(it.value)) { show = fmt(it.value); numLine.classList.add("neg"); }
@@ -1136,7 +1113,6 @@
       if(!row) closeAllSwipes();
     };
 
-    // AC：確認なし（常に押せる）
     ac1.onclick=()=> clearCol( portrait ? activeCol : 0 );
     ac2.onclick=()=> clearCol(1);
     ac3.onclick=()=> clearCol(2);
@@ -1144,16 +1120,19 @@
     requestAnimationFrame(applyAutoFitVisible);
   }
 
+  // ✅AC：その列の「値」だけでなく「ラベル」も全消去
   function clearCol(idx){
     const tab = state.tabs[activeTab];
     const col = tab.cols[idx];
     normalizeRows(col, getRows(idx));
+
     for(let r=0;r<col.rows.length;r++){
       const before={...col.rows[r]};
-      const after ={label:before.label, kind:"num", value:null};
+      const after ={label:"", kind:"num", value:null};  // ← labelも空に
       pushHistory({tab:activeTab, col:idx, row:r, prev:before, next:after});
       col.rows[r]=after;
     }
+
     entry=""; mode="num"; sign=+1;
     save(); renderAll(true);
   }
@@ -1182,7 +1161,6 @@
     labEl.contentEditable="true";
     labEl.focus();
 
-    // ✅カーソル末尾へ（iPadで入力が安定）
     try{
       const range = document.createRange();
       range.selectNodeContents(labEl);
@@ -1212,7 +1190,6 @@
     labEl.onblur=finish;
   }
 
-  // ===== 入力（上限1000万） =====
   function appendDigit(d){
     const before = entry;
 
@@ -1235,7 +1212,7 @@
     }
 
     if(mode==="num"){
-      setRow({kind:"num", value: sign*n}); // ADDの後でも、入力したらnumで上書きされる
+      setRow({kind:"num", value: sign*n});
     }else if(mode==="mul"){
       setRow({kind:"mul", value: n});
     }else if(mode==="div"){
@@ -1245,7 +1222,6 @@
     }
   }
 
-  /* ✅C押下：0表示にしないで真っさらに */
   function clearAll(){
     entry=""; mode="num"; sign=+1;
     setRow({kind:"num", value:null});
@@ -1262,10 +1238,9 @@
     }
   }
 
-  // ✅ここが本命：＋を「数字欄」に出す
   function pressAdd(){
     entry=""; mode="num"; sign=+1;
-    setRow({kind:"add", value:null}); // ← これで表示が「＋」になる
+    setRow({kind:"add", value:null});
   }
   function pressSub(){ entry=""; mode="sub"; sign=-1; setRow({kind:"sub", value:null}); }
   function pressMul(){ entry=""; mode="mul"; setRow({kind:"mul", value:null}); }
@@ -1354,7 +1329,7 @@
       const t=state.tabs[activeTab];
       t.cols.forEach((c, ci)=>{
         normalizeRows(c, getRows(ci));
-        c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
+        c.rows = c.rows.map(()=>({label:"", kind:"num", value:null}));
       });
       entry=""; mode="num"; sign=+1;
       save(); renderAll(true);
@@ -1364,7 +1339,7 @@
       state.tabs.forEach(t=>{
         t.cols.forEach((c, ci)=>{
           normalizeRows(c, getRows(ci));
-          c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
+          c.rows = c.rows.map(()=>({label:"", kind:"num", value:null}));
         });
       });
       entry=""; mode="num"; sign=+1;
