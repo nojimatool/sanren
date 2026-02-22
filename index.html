@@ -633,6 +633,30 @@
     flex-wrap:wrap;
     border-top:1px solid #eee;
   }
+    /* ===== iPad mini 横画面対策 ===== */
+@media screen 
+  and (min-width: 768px) 
+  and (max-width: 1024px) 
+  and (orientation: landscape) {
+
+  :root{
+    --mainCols: 1fr 1fr;   /* 左を少し縮める */
+    --gap: 8px;
+  }
+
+  .main{
+    padding: 8px 10px 60px;
+  }
+
+  .listWrap{
+    font-size: 12px;
+  }
+
+  .keypad{
+    transform: scale(0.92);
+    transform-origin: right top;
+  }
+}
   </style>
 </head>
 
