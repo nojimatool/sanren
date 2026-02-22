@@ -352,10 +352,21 @@
     overflow:hidden;
     text-overflow:ellipsis;
     flex:1;
+    cursor:pointer; /* ✅モーダル編集にするのでタップ感 */
   }
   .label.empty{color:transparent}
-  .label[contenteditable="true"]{
-    background:#fff7;border-radius:8px;padding:2px 4px;color:#111;
+
+  .editPill{
+    flex:0 0 auto;
+    font-size:12px;
+    font-weight:1000;
+    color:#0b3a8a;
+    padding:4px 8px;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,.18);
+    background:rgba(255,255,255,.75);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.6);
+    user-select:none;
   }
 
   .numLine{
@@ -493,7 +504,7 @@
 
   .key:active,.acBtn:active,.linkBtn:active,.gear:active,.colTab:active{transform:translateY(1px)}
 
-  /* ===== modal ===== */
+  /* ===== modal（設定） ===== */
   .backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.45);
     display:none;align-items:center;justify-content:center;
@@ -521,12 +532,82 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:760px){.grid2{grid-template-columns:1fr}}
   label.form{display:block;font-size:12px;color:#475467;margin:8px 0 4px}
-  input{width:100%;padding:10px 10px;border:1px solid #d0d5dd;border-radius:12px;font-size:14px}
+
+  /* ✅iOSフォーカスズーム対策：入力は16px以上 */
+  input{
+    width:100%;
+    padding:10px 10px;
+    border:1px solid #d0d5dd;
+    border-radius:12px;
+    font-size:16px;
+  }
+
   .mActions{padding:12px 14px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #eee;flex-wrap:wrap;flex:0 0 auto}
   .btn{padding:10px 12px;border-radius:12px;border:1px solid #d0d5dd;background:#fff;cursor:pointer;font-weight:900}
   .btn.primary{background:#111;color:#fff;border-color:#111}
   .btn.danger{background:#b42318;color:#fff;border-color:#b42318}
   .small{font-size:12px;color:#667085;margin-top:6px}
+
+  /* ===== ✅ラベル編集モーダル ===== */
+  .editBackdrop{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:1200;
+    padding:12px;
+  }
+  .editModal{
+    width:min(560px, 100%);
+    background:#fff;
+    border-radius:18px;
+    overflow:hidden;
+    border:1px solid rgba(0,0,0,.18);
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+    display:flex;
+    flex-direction:column;
+  }
+  .eHead{
+    padding:12px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    border-bottom:1px solid #eee;
+  }
+  .eHeadTitle{
+    font-weight:1000;
+    font-size:16px;
+    margin:0;
+  }
+  .eBody{
+    padding:14px;
+    display:grid;
+    gap:10px;
+  }
+  .eHint{
+    font-size:12px;
+    color:#667085;
+    line-height:1.4;
+  }
+  .eInput{
+    width:100%;
+    padding:12px 12px;
+    border:1px solid #d0d5dd;
+    border-radius:14px;
+    font-size:18px;
+    font-weight:900;
+    outline:none;
+  }
+  .eActions{
+    padding:12px 14px;
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    border-top:1px solid #eee;
+  }
   </style>
 </head>
 
@@ -595,7 +676,7 @@
   </div>
 </div>
 
-<!-- modal -->
+<!-- modal（設定） -->
 <div class="backdrop" id="backdrop">
   <div class="modal" role="dialog" aria-modal="true">
     <div class="mHead">
@@ -637,6 +718,25 @@
   </div>
 </div>
 
+<!-- ✅ラベル編集モーダル -->
+<div class="editBackdrop" id="editBackdrop">
+  <div class="editModal" role="dialog" aria-modal="true">
+    <div class="eHead">
+      <div class="eHeadTitle" id="editTitle">項目名を編集</div>
+      <button class="btn" type="button" id="editClose">閉じる</button>
+    </div>
+    <div class="eBody">
+      <div class="eHint" id="editHint">ここに項目名を入力して「保存」。</div>
+      <input class="eInput" id="editInput" type="text" placeholder="例：頭金" />
+    </div>
+    <div class="eActions">
+      <button class="btn" type="button" id="editClear">空にする</button>
+      <button class="btn" type="button" id="editCancel">キャンセル</button>
+      <button class="btn primary" type="button" id="editSave">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   const KEY = "sanren_calc_acalcm_v15_all";
@@ -661,6 +761,7 @@
   const gear = $("gear");
   const colTabsEl = $("colTabs");
 
+  // 設定モーダル
   const backdrop = $("backdrop");
   const closeM = $("closeM");
   const cancelM = $("cancelM");
@@ -674,7 +775,18 @@
   const ac2 = $("ac2");
   const ac3 = $("ac3");
 
-  // ✅編集中フラグ：iPadの「ダブルタップ→直後のclickで再描画」事故を防ぐ
+  // ✅ラベル編集モーダル
+  const editBackdrop = $("editBackdrop");
+  const editClose = $("editClose");
+  const editCancel = $("editCancel");
+  const editSave = $("editSave");
+  const editClear = $("editClear");
+  const editInput = $("editInput");
+  const editTitle = $("editTitle");
+  const editHint  = $("editHint");
+  let editingTarget = null; // {c,r}
+
+  // ✅編集中フラグ：ラベル編集をモーダルに寄せるので「行選択の誤作動」防止に使用
   let isEditingLabel = false;
 
   // 入力状態
@@ -1006,19 +1118,6 @@
     });
   }
 
-  function attachLabelDoubleTap(labEl, c, r){
-    let last = 0;
-    labEl.addEventListener("touchend", (ev)=>{
-      const now = Date.now();
-      if(now - last < 320){
-        ev.preventDefault?.();
-        ev.stopPropagation?.();
-        startLabelEdit(c,r);
-      }
-      last = now;
-    }, {passive:false});
-  }
-
   function attachSwipeAndLongPress(rowEl, c, r){
     let sx=0, sy=0;
     let tracking=false;
@@ -1030,7 +1129,7 @@
     };
 
     rowEl.addEventListener("pointerdown",(e)=>{
-      if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
+      if(isEditingLabel) return;
       try{ rowEl.setPointerCapture?.(e.pointerId); }catch{}
 
       sx = e.clientX; sy = e.clientY;
@@ -1074,6 +1173,78 @@
     rowEl.addEventListener("pointercancel", end);
     rowEl.addEventListener("lostpointercapture", end);
   }
+
+  // ===== ✅ラベル編集モーダル制御（副作用少なめ版） =====
+  function openLabelModal(c, r){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[c];
+    normalizeRows(col, getRows(c));
+
+    // 選択も合わせる
+    activeCol = c;
+    activeRow = r;
+    save();
+    renderLists();
+
+    editingTarget = { c, r };
+    isEditingLabel = true;
+
+    const cur = (col.rows[r].label || "");
+    editTitle.textContent = `項目名を編集（列${c+1} / ${r+1}行）`;
+    editHint.textContent  = "入力して「保存」。";
+    editInput.value = cur;
+
+    editBackdrop.style.display = "flex";
+
+    // iOS対策：表示直後は少し遅らせてフォーカス
+    setTimeout(()=>{
+      editInput.focus({preventScroll:true});
+      try{
+        const v = editInput.value;
+        editInput.setSelectionRange(v.length, v.length);
+      }catch{}
+    }, 50);
+  }
+
+  function closeLabelModal(){
+    editBackdrop.style.display = "none";
+    editingTarget = null;
+    isEditingLabel = false;
+    renderLists();
+  }
+
+  function commitLabel(){
+    if(!editingTarget) return;
+    const c = editingTarget.c;
+    const r = editingTarget.r;
+
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[c];
+    normalizeRows(col, getRows(c));
+
+    const before = {...col.rows[r]};
+    const afterLabel = (editInput.value || "").trim();
+    const after = {...before, label: afterLabel};
+
+    if(before.label !== after.label){
+      pushHistory({tab:activeTab, col:c, row:r, prev:before, next:after});
+      col.rows[r] = after;
+      save();
+    }
+    closeLabelModal();
+  }
+
+  editClose.onclick = closeLabelModal;
+  editCancel.onclick = closeLabelModal;
+  editClear.onclick = ()=>{ editInput.value=""; editInput.focus({preventScroll:true}); };
+  editSave.onclick = commitLabel;
+
+  editBackdrop.addEventListener("click",(e)=>{ if(e.target===editBackdrop) closeLabelModal(); });
+
+  editInput.addEventListener("keydown",(e)=>{
+    if(e.key==="Enter"){ e.preventDefault(); commitLabel(); }
+    if(e.key==="Escape"){ e.preventDefault(); closeLabelModal(); }
+  });
 
   function renderLists(){
     const renderKey = [
@@ -1133,7 +1304,6 @@
 
         rowMain.onclick=()=>{
           if(isEditingLabel) return;
-          if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
           if(row.classList.contains("swiped")){
             row.classList.remove("swiped");
             return;
@@ -1163,11 +1333,20 @@
         if(!t.trim()){ lab.classList.add("empty"); lab.innerHTML="&nbsp;"; }
         else lab.textContent=t;
 
-        lab.onclick=(ev)=>ev.stopPropagation();
-        lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
-        attachLabelDoubleTap(lab, c, r);
+        const pill=document.createElement("div");
+        pill.className="editPill";
+        pill.textContent="編集";
 
-        labelLine.append(lab);
+        // ✅ラベル編集はモーダル。ダブルタップ編集・contenteditableは撤去
+        const onOpen = (ev)=>{
+          ev.stopPropagation();
+          if(row.classList.contains("swiped")) row.classList.remove("swiped");
+          openLabelModal(c, r);
+        };
+        lab.onclick = onOpen;
+        pill.onclick = onOpen;
+
+        labelLine.append(lab, pill);
 
         const numLine=document.createElement("div");
         numLine.className="numLine";
@@ -1213,7 +1392,6 @@
     ac2.onclick=()=> clearCol(1);
     ac3.onclick=()=> clearCol(2);
 
-    // ✅8行フィット → 潰れ防止連動 → その後にAutoFit
     requestAnimationFrame(()=>{
       fitRowHeightToTarget();
       applyAutoFitVisible();
@@ -1237,59 +1415,6 @@
     }
 
     save(); renderAll(true);
-  }
-
-  function startLabelEdit(c,r){
-    const tab = state.tabs[activeTab];
-    const col = tab.cols[c];
-    normalizeRows(col, getRows(c));
-
-    activeCol=c; activeRow=r;
-    save(); renderLists();
-
-    const colEls = [...listsEl.querySelectorAll(".col")];
-    const colEl = isPortrait() ? colEls[0] : colEls[c];
-    const rowEl = colEl.querySelectorAll(".row")[r];
-    const labEl = rowEl.querySelector(".label");
-
-    rowEl.classList.remove("swiped");
-
-    labEl.classList.remove("empty");
-    if(labEl.innerHTML==="&nbsp;") labEl.textContent="";
-
-    const before={...col.rows[r]};
-    isEditingLabel = true;
-
-    labEl.contentEditable="true";
-    labEl.focus();
-
-    try{
-      const range = document.createRange();
-      range.selectNodeContents(labEl);
-      range.collapse(false);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }catch{}
-
-    const finish=()=>{
-      labEl.contentEditable="false";
-      const afterLabel=(labEl.textContent||"").trim();
-      if(before.label!==afterLabel){
-        const next={...col.rows[r], label:afterLabel};
-        pushHistory({tab:activeTab, col:c, row:r, prev:before, next});
-        col.rows[r].label=afterLabel;
-        save();
-      }
-      isEditingLabel = false;
-      renderLists();
-    };
-
-    labEl.onkeydown=(e)=>{
-      if(e.key==="Enter"){e.preventDefault(); labEl.blur();}
-      if(e.key==="Escape"){e.preventDefault(); labEl.textContent=before.label||""; labEl.blur();}
-    };
-    labEl.onblur=finish;
   }
 
   function appendDigit(d){
