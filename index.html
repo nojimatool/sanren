@@ -1,916 +1,1428 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <!-- ✅ズーム不要：ダブルタップズーム等を抑止 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
+
+  <!-- PWA設定 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="三連電卓" />
+
+  <link rel="manifest" href="manifest.json?v=2" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=2" />
+
   <title>三連電卓</title>
 
   <style>
+  :root{
+    /* ===== ノジマ風カラー ===== */
+    --wood1:#0d3f91;
+    --wood2:#082b66;
+
+    --glass:rgba(255,255,255,.12);
+    --panel:rgba(255,255,255,.95);
+    --bd:rgba(0,0,0,.18);
+    --neg:#d92d20;
+
+    /* ===== ここが “全iPadで勝手に最適” の核 ===== */
+    --calcW: clamp(300px, 28vw, 380px);
+    --colMinW: 240px;
+    --safeB: env(safe-area-inset-bottom, 0px);
+
+    --rowH: 52px;
+    --labelFS: 14px;
+
+    /* 数字表示 */
+    --numMax: 30px;
+    --numMin: 12px;
+
+    /* 合計 */
+    --topMax: 46px;
+    --topMin: 18px;
+
+    /* ===== キー ===== */
+    --gap: 10px;
+    --keyFS: 38px;
+    --keyFSop: 40px;
+    --keyFSfunc: 36px;
+    --keyRadius: 14px;
+
+    /* ✅キー高さ：縦方向に “なるべく目一杯” 使う（でも上限あり） */
+    --keyH: clamp(64px, 8.6vh, 92px);
+
+    /* ===== ボタン配色 ===== */
+    --btnGrey1: rgba(255,255,255,.98);
+    --btnGrey2: rgba(230,235,245,.95);
+
+    --btnOp1: rgba(60,120,230,.95);
+    --btnOp2: rgba(30,80,180,.95);
+
+    --btnFunc1: rgba(10,45,120,.85);
+    --btnFunc2: rgba(5,25,70,.90);
+
+    --btnUndo1: rgba(255,150,40,.95);
+    --btnUndo2: rgba(220,110,20,.95);
+
+    --btnRedo1: rgba(255,180,70,.95);
+    --btnRedo2: rgba(230,120,30,.95);
+
+    --tabBlue:#ffffff;
+
+    /* スワイプ削除 */
+    --delW: 86px;
+    --delBg: #e11d48;
+  }
+
+  /* ✅縦：1列表示＋列切替（“ACまで1枚”を優先） */
+  @media (orientation:portrait){
     :root{
-      --bg1:#0a3b86;
-      --bg2:#072e66;
-      --panel:#244b86;
-      --panel2:#1f4277;
-      --edge:#08306a;
-      --line:rgba(255,255,255,.15);
+      --calcW: 340px;
+      --colMinW: 340px;
+      --rowH: 50px;
+      --gap: 9px;
+      --keyFS: 40px;
+      --keyFSop: 42px;
+      --keyFSfunc: 38px;
+      --keyH: clamp(62px, 7.8vh, 90px);
+    }
+  }
 
-      --white:#f7f8fb;
-      --white2:#eef1f6;
+  /* ✅高さが厳しい端末だけ（mini等）キーを少しだけ縮める */
+  @media (max-height: 720px){
+    :root{ --keyH: clamp(56px, 7.2vh, 86px); }
+  }
 
-      --btnBlue1:#2f6fe4;
-      --btnBlue2:#1744a8;
-      --btnDeep1:#0a2a73;
-      --btnDeep2:#041a4d;
+  *{ box-sizing:border-box; }
+  html, body{
+    margin:0;
+    padding:0;
+    height:100%;
+    overflow:hidden;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+    background:linear-gradient(180deg,var(--wood1),var(--wood2));
+  }
 
-      --btnOrange1:#f2a341;
-      --btnOrange2:#dd7e11;
-      --shadow:0 10px 20px rgba(0,0,0,.18);
+  /* ✅Safari/PWAの “下の余白” を物理的に潰す（固定レイアウト） */
+  .frame{
+    position:fixed;
+    inset:0;
+    padding:10px;
+    padding-bottom: calc(10px + var(--safeB));
+    max-width:1360px;
+    margin:0 auto;
+    overflow:hidden;
+  }
 
-      --r:18px;
-      --gap:14px;
+  .app{
+    height:100%;
+    min-height:0;
+    background:linear-gradient(180deg,var(--wood1),var(--wood2));
+    border-radius:20px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    overflow:hidden;
+  }
 
-      --topH:74px;
-      --safeB: env(safe-area-inset-bottom);
-      --safeT: env(safe-area-inset-top);
+  .topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tab{
+    min-width:92px;
+    padding:8px 10px;
+    border-radius:12px;
+    background:rgba(255,255,255,.88);
+    border:1px solid rgba(0,0,0,.20);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+    font-weight:900;
+    color:#0b3a8a;
+    text-align:center;
+    cursor:pointer;
+    user-select:none;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .tab.active{
+    background:linear-gradient(180deg, #2e6cff, #0b3a8a);
+    color:#fff;
+  }
+  .topRight{margin-left:auto;display:flex;gap:10px;align-items:center}
 
-      --tabH:44px;
-      --tabPadX:18px;
+  .gear{
+    width:52px;height:42px;border-radius:12px;
+    display:grid;place-items:center;cursor:pointer;user-select:none;
+    background:rgba(255,255,255,.80);
+    border:1px solid rgba(0,0,0,.22);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 3px 10px rgba(0,0,0,.10);
+    font-size:20px;font-weight:900;
+  }
 
-      /* iPad全般の基準（大きくしすぎない・小さすぎない） */
-      --dispH: clamp(58px, 9vh, 78px);
-      --acH: clamp(44px, 7vh, 62px);
+  .linkBar{display:flex;gap:8px;align-items:center}
+  .linkBtn{
+    width:64px;height:42px;border-radius:10px;
+    display:grid;place-items:center;
+    background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(230,230,230,.92));
+    border:1px solid rgba(0,0,0,.22);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
+    font-weight:1000;color:#5b2b86;cursor:pointer;user-select:none;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;
+  }
+  .linkBtn.disabled{color:#667085}
 
-      --numFont: clamp(34px, 5.2vw, 64px);
-      --opFont:  clamp(22px, 3.2vw, 40px);
+  .grid{
+    flex:1; min-height:0;
+    display:grid;
+    grid-template-columns: 1fr var(--calcW);
+    gap:12px;
+    overflow:hidden;
+  }
 
-      --rowH: clamp(44px, 6vh, 58px);
-      --rowFont: clamp(18px, 2.4vw, 26px);
+  .leftWrap{
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    overflow:hidden;
+    flex:1;
+  }
 
-      --kbdGap: 12px;
-      --kbdRadius: 16px;
+  .lists{
+    flex:1; min-height:0;
+    display:grid;
+    grid-template-columns:repeat(3, minmax(var(--colMinW), 1fr));
+    gap:10px;
+    overflow:hidden;
+  }
+  @media (orientation:portrait){
+    .lists{grid-template-columns:repeat(1, minmax(var(--colMinW), 1fr));}
+  }
 
-      /* 横の時：キーボード狭く、列を広め（要望対応） */
-      --kbdW_land: clamp(300px, 28vw, 380px);
-      /* 縦の時：キーボード少し広め */
-      --kbdW_port: clamp(300px, 42vw, 420px);
-    }
+  /* ✅ACは必ず表示＆押し出されない */
+  .acRow{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    flex:0 0 auto;
+    flex-shrink:0;
+  }
+  @media (orientation:portrait){
+    .acRow{ grid-template-columns:repeat(1,1fr); }
+  }
 
-    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
-    html,body{ height:100%; }
-    body{
-      margin:0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans",
-                   "Noto Sans JP", "Helvetica Neue", Arial, sans-serif;
-      background: linear-gradient(180deg, var(--bg1), var(--bg2));
-      overflow:hidden; /* 余白/スクロール抑止 */
-      touch-action: manipulation; /* 変なダブルタップズーム抑止 */
-    }
+  .col{
+    min-width:var(--colMinW);
+    background:var(--glass);
+    border:1px solid var(--bd);
+    border-radius:16px;
+    padding:8px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-height:0;
+    overflow:hidden;
+  }
 
-    /* 画面を「dvh」で固定（Safariの下バーで崩れない） */
-    .app{
-      height: 100dvh;
-      padding: calc(10px + var(--safeT)) 12px calc(10px + var(--safeB));
-      display:flex;
-    }
+  .topBox{
+    background:rgba(255,255,255,.50);
+    border:1px solid rgba(0,0,0,.20);
+    border-radius:14px;
+    padding:8px 10px;
+    display:flex;align-items:center;justify-content:flex-end;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+    font-weight:1100;
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap; overflow:hidden;
+    color:#111;
+  }
+  .topBox.neg{color:var(--neg)}
+  .topSpan{display:inline-block;max-width:100%}
 
-    .frame{
-      width:100%;
-      height:100%;
-      border-radius: 26px;
-      background: linear-gradient(180deg, #0c3f8f, #062a5e);
-      box-shadow: var(--shadow);
-      padding: 14px;
-      display:flex;
-      flex-direction:column;
-      gap: 12px;
-      overflow:hidden;
-    }
+  .panel{
+    flex:1; min-height:0;
+    background:var(--panel);
+    border:1px solid rgba(0,0,0,.12);
+    border-radius:14px;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
-    /* 上のタブ列 */
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      height: var(--topH);
-      flex: 0 0 auto;
-    }
+  .row{
+    border-bottom:1px solid #eaeaea;
+    min-height:var(--rowH);
+    position:relative;
+    overflow:hidden;
+    cursor:pointer;
+    user-select:none;
+    touch-action: pan-y;
+    background:transparent;
+  }
+  .row:last-child{border-bottom:none}
 
-    .tabs{
-      display:flex;
-      gap: 10px;
-      align-items:center;
-      flex-wrap:nowrap;
-      overflow:hidden;
-    }
-    .tab{
-      height: var(--tabH);
-      min-width: 98px;
-      padding: 0 var(--tabPadX);
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.35);
-      background: linear-gradient(180deg, #f2f4f8, #dde4ef);
-      color:#17407b;
-      font-weight:700;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      box-shadow: 0 6px 10px rgba(0,0,0,.12);
-      user-select:none;
-      cursor:pointer;
-    }
-    .tab.active{
-      background: linear-gradient(180deg, #2f6fe4, #1744a8);
-      color:#fff;
-      border-color: rgba(255,255,255,.25);
-    }
+  /* ✅選択中を薄いグレー（rowだけだとrowMainに覆われるのでrowMain側にも当てる） */
+  .row.active{
+    outline:3px solid rgba(0,0,0,.10);
+    outline-offset:-3px;
+  }
+  .row.active .rowMain{
+    background:rgba(0,0,0,.05);
+  }
 
-    .topRight{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex: 0 0 auto;
-    }
-    .gear{
-      width: 46px;
-      height: 46px;
-      border-radius: 12px;
-      background: linear-gradient(180deg, #f2f4f8, #dde4ef);
-      border: 1px solid rgba(255,255,255,.35);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      box-shadow: 0 6px 10px rgba(0,0,0,.12);
-      user-select:none;
-    }
-    .miniBtn{
-      width: 64px;
-      height: 46px;
-      border-radius: 12px;
-      background: linear-gradient(180deg, #f2f4f8, #dde4ef);
-      border: 1px solid rgba(255,255,255,.35);
-      box-shadow: 0 6px 10px rgba(0,0,0,.12);
-    }
+  .rowMain{
+    width:100%;
+    padding:8px 10px;
+    min-height:var(--rowH);
+    display:flex;flex-direction:column;justify-content:space-between;
+    gap:4px;
+    background:var(--panel);
+    position:relative;
+    z-index:2;
+    transition:transform .14s ease;
+    will-change:transform;
+  }
+  .row.swiped .rowMain{ transform: translateX(calc(-1 * var(--delW))); }
 
-    /* メイン領域：左（リスト）＋右（キーボード） */
-    .main{
-      flex:1 1 auto;
-      min-height:0;
-      display:grid;
-      grid-template-columns: 1fr var(--kbdW_port);
-      gap: var(--gap);
-      overflow:hidden;
-    }
+  .delBtn{
+    position:absolute;
+    right:0; top:0; bottom:0;
+    width:var(--delW);
+    border:none;
+    background:var(--delBg);
+    color:#fff;
+    font-weight:1000;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    opacity:0;
+    pointer-events:none;
+    z-index:1;
+  }
+  .row.swiped .delBtn{ opacity:1; pointer-events:auto; }
 
-    /* 横向きは：リストを広く、キーボード狭く（要望） */
-    @media (orientation: landscape){
-      .main{
-        grid-template-columns: 1fr var(--kbdW_land);
-      }
-    }
+  .labelLine{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:18px;}
+  .label{
+    font-size:var(--labelFS);
+    font-weight:900;color:#111;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    flex:1;
+  }
+  .label.empty{color:transparent}
+  .label[contenteditable="true"]{
+    background:#fff7;border-radius:8px;padding:2px 4px;color:#111;
+  }
 
-    /* 左側（リスト群） */
-    .lists{
-      min-height:0;
-      display:grid;
-      gap: var(--gap);
-      overflow:hidden;
-    }
+  .numLine{
+    display:flex;align-items:flex-end;justify-content:flex-end;
+    font-weight:1100;
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+    overflow:hidden;
+    color:#111;
+    min-height:24px;
+  }
+  .numLine.neg{color:var(--neg)}
+  .numSpan{display:inline-block;max-width:100%}
 
-    /* 縦（狭い）→ 1列（選択リストだけ表示） */
-    .lists.one{
-      grid-template-columns: 1fr;
-    }
+  .acBtn{
+    height:50px;border-radius:14px;
+    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
+    border:1px solid rgba(0,0,0,.22);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
+    display:grid;place-items:center;
+    font-weight:1100;font-size:32px;color:#1f3a8a;
+    cursor:pointer;user-select:none;
+    width:100%;
+  }
 
-    /* 横（広い）→ 3列 */
-    .lists.three{
-      grid-template-columns: repeat(3, 1fr);
-    }
+  /* ===== 右：電卓（配置は変えない） ===== */
+  .calc{
+    min-height:0;
+    background:var(--glass);
+    border:1px solid var(--bd);
+    border-radius:16px;
+    padding:12px;
+    display:grid;
+    grid-template-rows: auto 1fr 1fr;
+    gap:10px;
+    overflow:hidden;
+  }
 
-    .listCard{
-      background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
-      border: 2px solid rgba(255,255,255,.18);
-      border-radius: 22px;
-      padding: 10px;
-      display:flex;
-      flex-direction:column;
-      min-height:0;
-      overflow:hidden;
-    }
+  .colTabs{
+    display:none;
+    gap:8px;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+  }
+  @media (orientation:portrait){
+    .colTabs{display:flex;}
+  }
+  .colTab{
+    min-width:92px;
+    padding:8px 10px;
+    border-radius:10px;
+    background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(235,235,235,.85));
+    border:1px solid rgba(0,0,0,.25);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 2px 7px rgba(0,0,0,.10);
+    font-weight:1000;
+    color:#0b3a8a;
+    text-align:center;
+    cursor:pointer;
+    user-select:none;
+  }
+  .colTab.active{
+    background:linear-gradient(180deg, rgba(90,140,230,.85), rgba(60,110,210,.85));
+    color:#fff;
+  }
 
-    .display{
-      height: var(--dispH);
-      border-radius: 18px;
-      background: rgba(205,214,230,.8);
-      border: 2px solid rgba(255,255,255,.25);
-      box-shadow: inset 0 2px 0 rgba(255,255,255,.35);
-      display:flex;
-      align-items:center;
-      justify-content:flex-end;
-      padding: 0 16px;
-      gap: 12px;
-      flex: 0 0 auto;
-      overflow:hidden;
-    }
-    .opBadge{
-      font-size: var(--opFont);
-      font-weight:800;
-      color:#16335e;
-      opacity:.95;
-      flex: 0 0 auto;
-    }
-    .opBadge.neg{ color:#d12a2a; }
-    .dispVal{
-      font-size: var(--numFont);
-      font-weight: 500;
-      color:#111;
-      letter-spacing: .02em;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow: ellipsis; /* 文字が切れないように */
-      max-width: 100%;
-    }
+  .padNum{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:var(--gap);
+    align-content:stretch;
+    grid-auto-rows: 1fr;
+    min-height:0;
+  }
+  .padOps{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:var(--gap);
+    align-content:stretch;
+    grid-auto-rows: 1fr;
+    min-height:0;
+  }
 
-    .rows{
-      margin-top:10px;
-      flex:1 1 auto;
-      min-height:0;
-      background: rgba(255,255,255,.92);
-      border-radius: 18px;
-      border: 2px solid rgba(255,255,255,.25);
-      overflow:auto;
-      -webkit-overflow-scrolling: touch;
-    }
+  .key{
+    height:100%;
+    min-height:var(--keyH);
+    border-radius:var(--keyRadius);
+    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
+    border:1px solid rgba(0,0,0,.22);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
+    display:grid;place-items:center;
+    font-weight:1200;
+    cursor:pointer;user-select:none;
+    overflow:hidden;
+  }
+  .key .kspan{display:inline-block;max-width:100%;padding:0 6px;white-space:nowrap}
 
-    .row{
-      height: var(--rowH);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      padding: 0 14px;
-      border-bottom: 1px solid rgba(0,0,0,.08);
-      font-size: var(--rowFont);
-      user-select:none;
-    }
-    .row:last-child{ border-bottom:none; }
+  .numKey{ font-size:var(--keyFS); color:#111; }
 
-    /* ← これが「選択中グレー」 */
-    .row.selected{
-      background: rgba(120,130,150,.18);
-      outline: 2px solid rgba(60,80,120,.25);
-      outline-offset: -2px;
-    }
+  /* ✅演算キー：＋が消える/薄い対策（白＋軽い影で確実に見える） */
+  .opKey{
+    background:linear-gradient(180deg, var(--btnOp1), var(--btnOp2));
+    border-color:rgba(0,0,0,.22);
+    font-size:var(--keyFSop);
+    color:#fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  }
 
-    .row .label{
-      color:#222;
-      overflow:hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      max-width: 58%;
-    }
-    .row .val{
-      color:#111;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
-    .row .val.neg{ color:#d12a2a; }
+  .funcKey{
+    background:linear-gradient(180deg, var(--btnFunc1), var(--btnFunc2));
+    border-color:rgba(0,0,0,.35);
+    font-size:var(--keyFSfunc);
+    color:#fff;
+  }
+  .undoKey{
+    background:linear-gradient(180deg, var(--btnUndo1), var(--btnUndo2));
+    border-color:rgba(0,0,0,.35);
+    color:#fff;
+    font-size:var(--keyFSfunc);
+  }
+  .redoKey{
+    background:linear-gradient(180deg, var(--btnRedo1), var(--btnRedo2));
+    border-color:rgba(0,0,0,.35);
+    color:#fff;
+    font-size:var(--keyFSfunc);
+  }
+  .eqKey{
+    background:linear-gradient(180deg, #ff8c00, #e45b00);
+    color:#fff;
+    border:1px solid rgba(0,0,0,.35);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.15), 0 3px 8px rgba(0,0,0,.25);
+    font-size:var(--keyFSfunc);
+  }
 
-    .acBar{
-      margin-top:10px;
-      height: var(--acH);
-      border-radius: 16px;
-      background: linear-gradient(180deg, #f2f4f8, #dde4ef);
-      border: 2px solid rgba(255,255,255,.35);
-      box-shadow: 0 6px 10px rgba(0,0,0,.12);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size: clamp(26px, 3vw, 40px);
-      color:#1d3f7c;
-      user-select:none;
-      flex: 0 0 auto;
-      cursor:pointer;
-    }
+  .key:active,.acBtn:active,.linkBtn:active,.gear:active,.colTab:active{transform:translateY(1px)}
 
-    /* 右側（キーボード） */
-    .kbd{
-      background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
-      border: 2px solid rgba(255,255,255,.18);
-      border-radius: 22px;
-      padding: 12px;
-      display:flex;
-      flex-direction:column;
-      min-height:0;
-      overflow:hidden;
-      gap: 10px;
-    }
-
-    .kbdTopTabs{
-      display:flex;
-      gap:10px;
-      justify-content:flex-end;
-      flex: 0 0 auto;
-    }
-    .kbdTab{
-      height: 44px;
-      min-width: 98px;
-      padding: 0 18px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.35);
-      background: linear-gradient(180deg, #f2f4f8, #dde4ef);
-      color:#17407b;
-      font-weight:700;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      box-shadow: 0 6px 10px rgba(0,0,0,.12);
-      user-select:none;
-    }
-    .kbdTab.active{
-      background: linear-gradient(180deg, #2f6fe4, #1744a8);
-      color:#fff;
-    }
-
-    /* キーボード本体：縦長を目一杯使う（要望） */
-    .grid{
-      flex:1 1 auto;
-      min-height:0;
-      display:grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: var(--kbdGap);
-    }
-
-    /* 7行（数字4行 + 演算2行 + 1行）を「高さ100%で分配」 */
-    .grid{
-      grid-template-rows: repeat(7, 1fr);
-    }
-
-    .btn{
-      border-radius: var(--kbdRadius);
-      border: 2px solid rgba(255,255,255,.28);
-      background: linear-gradient(180deg, #f7f8fb, #e7ebf3);
-      box-shadow: 0 10px 14px rgba(0,0,0,.14);
-      font-size: clamp(28px, 3.2vw, 46px);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      user-select:none;
-      cursor:pointer;
-      touch-action: manipulation;
-    }
-    .btn:active{
-      transform: translateY(1px);
-      filter: brightness(.98);
-    }
-
-    .btn.blue{
-      background: linear-gradient(180deg, var(--btnBlue1), var(--btnBlue2));
-      color:#0b0b0b;
-      border-color: rgba(255,255,255,.18);
-      font-weight:700;
-    }
-    .btn.deep{
-      background: linear-gradient(180deg, var(--btnDeep1), var(--btnDeep2));
-      color:#fff;
-      font-weight:700;
-    }
-    .btn.orange{
-      background: linear-gradient(180deg, var(--btnOrange1), var(--btnOrange2));
-      color:#fff;
-      font-weight:800;
-    }
-    .btn.wide{
-      grid-column: span 2;
-    }
-
-    /* 画面が狭い縦の場合：行間少し詰める */
-    @media (max-width: 820px){
-      :root{ --kbdGap: 10px; }
-    }
-
-    /* --- 編集モーダル（ダブルタップ文字入力の安定版） --- */
-    .modalBack{
-      position:fixed;
-      inset:0;
-      background: rgba(0,0,0,.35);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding: 18px;
-      z-index: 9999;
-    }
-    .modal{
-      width:min(640px, 92vw);
-      background:#fff;
-      border-radius: 18px;
-      padding: 14px;
-      box-shadow: 0 20px 40px rgba(0,0,0,.25);
-    }
-    .modal h3{
-      margin: 6px 6px 10px;
-      font-size: 18px;
-    }
-    .modal input{
-      width:100%;
-      height: 52px;
-      font-size: 16px; /* iOSズーム回避の最低サイズ */
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid #c9d2e3;
-      outline:none;
-    }
-    .modalBtns{
-      display:flex;
-      gap:10px;
-      justify-content:flex-end;
-      margin-top: 12px;
-    }
-    .mBtn{
-      height: 44px;
-      min-width: 96px;
-      border-radius: 12px;
-      border: none;
-      background:#e9eef7;
-      font-weight:700;
-      font-size: 16px;
-    }
-    .mBtn.ok{ background:#2f6fe4; color:#fff; }
+  /* ===== modal ===== */
+  .backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.45);
+    display:none;align-items:center;justify-content:center;
+    z-index:999;padding:12px;
+  }
+  .modal{
+    width:min(920px,100%);
+    max-height:92vh;
+    background:#fff;border-radius:18px;overflow:hidden;
+    border:1px solid rgba(0,0,0,.18);
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+    display:flex;flex-direction:column;
+  }
+  .mHead{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;flex:0 0 auto}
+  .mHead h2{margin:0;font-size:16px}
+  .mBody{
+    padding:14px;
+    display:grid;gap:14px;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+    flex:1 1 auto;
+  }
+  .sec{border:1px solid #eee;border-radius:14px;padding:12px}
+  .secTitle{font-weight:1000;margin-bottom:10px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  label.form{display:block;font-size:12px;color:#475467;margin:8px 0 4px}
+  input{width:100%;padding:10px 10px;border:1px solid #d0d5dd;border-radius:12px;font-size:14px}
+  .mActions{padding:12px 14px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #eee;flex-wrap:wrap;flex:0 0 auto}
+  .btn{padding:10px 12px;border-radius:12px;border:1px solid #d0d5dd;background:#fff;cursor:pointer;font-weight:900}
+  .btn.primary{background:#111;color:#fff;border-color:#111}
+  .btn.danger{background:#b42318;color:#fff;border-color:#b42318}
+  .small{font-size:12px;color:#667085;margin-top:6px}
   </style>
 </head>
 
 <body>
+<div class="frame">
   <div class="app">
-    <div class="frame">
-      <div class="topbar">
-        <div class="tabs" id="topTabs"></div>
-        <div class="topRight">
-          <div class="gear" title="設定">⚙️</div>
-          <div class="miniBtn"></div>
-          <div class="miniBtn"></div>
-          <div class="miniBtn"></div>
-          <div class="miniBtn"></div>
+    <div class="topbar">
+      <div class="tabs" id="tabs"></div>
+
+      <div class="topRight">
+        <div class="gear" id="gear" title="設定">⚙️</div>
+        <div class="linkBar" id="linkBar"></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="leftWrap">
+        <div class="lists" id="lists"></div>
+
+        <!-- ✅ACは常に表示 -->
+        <div class="acRow" id="acRow">
+          <div class="acBtn" id="ac1">AC</div>
+          <div class="acBtn" id="ac2">AC</div>
+          <div class="acBtn" id="ac3">AC</div>
         </div>
       </div>
 
-      <div class="main">
-        <div class="lists" id="listsArea"></div>
+      <div class="calc">
+        <div class="colTabs" id="colTabs"></div>
 
-        <div class="kbd">
-          <div class="kbdTopTabs" id="kbdTabs"></div>
+        <!-- 上：テンキー（配置変更しない） -->
+        <div class="padNum" id="padNum">
+          <div class="key numKey" data-k="7"><span class="kspan">7</span></div>
+          <div class="key numKey" data-k="8"><span class="kspan">8</span></div>
+          <div class="key numKey" data-k="9"><span class="kspan">9</span></div>
 
-          <div class="grid" id="kbdGrid">
-            <!-- row1 -->
-            <div class="btn" data-k="7">7</div>
-            <div class="btn" data-k="8">8</div>
-            <div class="btn" data-k="9">9</div>
-            <!-- row2 -->
-            <div class="btn" data-k="4">4</div>
-            <div class="btn" data-k="5">5</div>
-            <div class="btn" data-k="6">6</div>
-            <!-- row3 -->
-            <div class="btn" data-k="1">1</div>
-            <div class="btn" data-k="2">2</div>
-            <div class="btn" data-k="3">3</div>
-            <!-- row4 -->
-            <div class="btn" data-k="0">0</div>
-            <div class="btn" data-k="00">00</div>
-            <div class="btn" data-k=".">.</div>
+          <div class="key numKey" data-k="4"><span class="kspan">4</span></div>
+          <div class="key numKey" data-k="5"><span class="kspan">5</span></div>
+          <div class="key numKey" data-k="6"><span class="kspan">6</span></div>
 
-            <!-- row5 -->
-            <div class="btn blue" data-k="pm">±</div>
-            <div class="btn blue" data-k="mul">×</div>
-            <div class="btn blue" data-k="add">+</div>
+          <div class="key numKey" data-k="1"><span class="kspan">1</span></div>
+          <div class="key numKey" data-k="2"><span class="kspan">2</span></div>
+          <div class="key numKey" data-k="3"><span class="kspan">3</span></div>
 
-            <!-- row6 -->
-            <div class="btn deep" data-k="c">C</div>
-            <div class="btn blue" data-k="div">÷</div>
-            <div class="btn blue" data-k="sub">−</div>
+          <div class="key numKey" data-k="0"><span class="kspan">0</span></div>
+          <div class="key numKey" data-k="00"><span class="kspan">00</span></div>
+          <div class="key numKey" data-k="."><span class="kspan">.</span></div>
+        </div>
 
-            <!-- row7 -->
-            <div class="btn orange" data-k="undo">↩︎</div>
-            <div class="btn orange" data-k="redo">↪︎</div>
-            <div class="btn orange" data-k="eq">＝</div>
-          </div>
+        <!-- 下：演算（9個）（配置変更しない） -->
+        <div class="padOps" id="padOps">
+          <div class="key opKey" data-k="NEG"><span class="kspan">±</span></div>
+          <div class="key opKey" data-k="MUL"><span class="kspan">×</span></div>
+          <div class="key opKey" data-k="ADD"><span class="kspan">＋</span></div>
+
+          <div class="key funcKey" data-k="C"><span class="kspan">C</span></div>
+          <div class="key opKey" data-k="DIV"><span class="kspan">÷</span></div>
+          <div class="key opKey" data-k="SUB"><span class="kspan">－</span></div>
+
+          <div class="key undoKey" data-k="UNDO"><span class="kspan">↩︎</span></div>
+          <div class="key redoKey" data-k="REDO"><span class="kspan">↪︎</span></div>
+          <div class="key eqKey" data-k="ENTER"><span class="kspan">＝</span></div>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- 編集モーダル（ダブルタップで開く） -->
-  <div class="modalBack" id="modalBack">
-    <div class="modal">
-      <h3 id="modalTitle">編集</h3>
-      <input id="modalInput" type="text" inputmode="text" autocomplete="off" autocapitalize="none" />
-      <div class="modalBtns">
-        <button class="mBtn" id="modalCancel">キャンセル</button>
-        <button class="mBtn ok" id="modalOk">OK</button>
+<!-- modal -->
+<div class="backdrop" id="backdrop">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="mHead">
+      <h2>設定</h2>
+      <button class="btn" type="button" id="closeM">閉じる</button>
+    </div>
+
+    <div class="mBody">
+      <div class="sec">
+        <div class="secTitle">リンク（横4つ）</div>
+        <div class="grid2" id="linksForm"></div>
+        <div class="small">URLが空なら未設定（ボタン押下でこの設定が開きます）。</div>
+      </div>
+
+      <div class="sec">
+        <div class="secTitle">タブ名（固定5）</div>
+        <div class="grid2" id="tabsForm"></div>
+      </div>
+
+      <div class="sec">
+        <div class="secTitle">枠数（列ごと）</div>
+        <div class="grid2" id="rowsForm"></div>
+        <div class="small">列1/列2/列3 を別々に設定できます（最大40）。</div>
+      </div>
+
+      <div class="sec">
+        <div class="secTitle">消去</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn danger" type="button" id="wipeTab">このタブを全消去</button>
+          <button class="btn danger" type="button" id="wipeAll">全タブを全消去</button>
+        </div>
       </div>
     </div>
+
+    <div class="mActions">
+      <button class="btn" type="button" id="cancelM">キャンセル</button>
+      <button class="btn primary" type="button" id="saveM">保存</button>
+    </div>
   </div>
+</div>
 
-  <script>
-    /********************
-     * データ
-     ********************/
-    const LIST_COUNT = 5;      // 上のタブ（List1-5）
-    const COLUMN_COUNT = 3;    // 表示列（横は3列、縦は1列）
+<script>
+(() => {
+  const KEY = "sanren_calc_acalcm_v15_all";
+  const TAB_COUNT = 5;
+  const COLS = 3;
 
-    const state = {
-      activeList: 0,                 // 0-4
-      columns: [0,1,2],              // 表示中の列がどのListを表示するか
-      data: Array.from({length: LIST_COUNT}, () => ({
-        display: "0",
-        op: "",                      // 直近の演算子表示（＋等）
-        rows: [],                    // {label, val}
-        selectedIndex: -1,           // 選択中行
-        input: "0",                  // 入力バッファ
-        hasDot: false,
+  const DEFAULT_ROWS = [15,15,15];
+  const MAX_ROWS = 40;
+
+  // 入力上限：1千万
+  const MAX_ABS = 10000000;
+
+  const HISTORY_MAX = 400;
+  const undoStack = [];
+  const redoStack = [];
+  let suppressHistory = false;
+
+  const $ = (id)=>document.getElementById(id);
+  const tabsEl = $("tabs");
+  const listsEl = $("lists");
+  const linkBar = $("linkBar");
+  const gear = $("gear");
+  const colTabsEl = $("colTabs");
+
+  const backdrop = $("backdrop");
+  const closeM = $("closeM");
+  const cancelM = $("cancelM");
+  const saveM = $("saveM");
+  const linksForm = $("linksForm");
+  const tabsForm = $("tabsForm");
+  const rowsForm = $("rowsForm");
+
+  const acRowEl = $("acRow");
+  const ac1 = $("ac1");
+  const ac2 = $("ac2");
+  const ac3 = $("ac3");
+
+  // ✅編集中フラグ：iPadの「ダブルタップ→直後のclickで再描画」事故を防ぐ
+  let isEditingLabel = false;
+
+  // 入力状態
+  let entry = "";
+  let mode  = "num";   // "num" | "mul" | "div" | "sub"
+  let sign  = +1;
+
+  // state
+  let state = load() || initial();
+  let activeTab = clamp(state.activeTab, 0, TAB_COUNT-1);
+  let activeCol = clamp(state.activeCol, 0, COLS-1);
+  let activeRow = clamp(state.activeRow, 0, getRows(activeCol)-1);
+
+  // render最適化
+  let lastRenderKey = "";
+
+  function initial(){
+    return {
+      activeTab:0, activeCol:0, activeRow:0,
+      rowsByCol:[...DEFAULT_ROWS],
+      tabs:Array.from({length:TAB_COUNT}, (_,i)=>({
+        name:`List${i+1}`,
+        cols:Array.from({length:COLS}, (__,c)=>({
+          rows: Array.from({length:DEFAULT_ROWS[c]}, ()=>({label:"", kind:"num", value:null}))
+        }))
       })),
-      // undo/redo（簡易）
-      history: [],
-      future: [],
+      links:Array.from({length:4}, ()=>({label:"", url:""})),
+      savedAt:new Date().toISOString()
     };
+  }
 
-    /********************
-     * 便利関数
-     ********************/
-    const fmt = (nStr) => {
-      if (nStr === "" || nStr === "-" || nStr === ".") return nStr || "0";
-      const neg = nStr.startsWith("-");
-      let s = neg ? nStr.slice(1) : nStr;
+  function save(){
+    state.activeTab = activeTab;
+    state.activeCol = activeCol;
+    state.activeRow = activeRow;
+    state.savedAt = new Date().toISOString();
+    try{
+      localStorage.setItem(KEY, JSON.stringify(state));
+    }catch(e){
+      console.warn("localStorage save failed:", e);
+    }
+  }
 
-      if (s.includes(".")) {
-        const [a,b] = s.split(".");
-        const a2 = a.replace(/^0+(?=\d)/,"").replace(/\B(?=(\d{3})+(?!\d))/g,",") || "0";
-        return (neg?"-":"") + a2 + "." + (b ?? "");
-      } else {
-        const a2 = s.replace(/^0+(?=\d)/,"").replace(/\B(?=(\d{3})+(?!\d))/g,",") || "0";
-        return (neg?"-":"") + a2;
-      }
-    };
-
-    const pushHistory = () => {
-      state.history.push(JSON.stringify(state.data));
-      if (state.history.length > 80) state.history.shift();
-      state.future.length = 0;
-    };
-
-    const undo = () => {
-      if (!state.history.length) return;
-      state.future.push(JSON.stringify(state.data));
-      const prev = state.history.pop();
-      state.data = JSON.parse(prev);
-      render();
-    };
-
-    const redo = () => {
-      if (!state.future.length) return;
-      state.history.push(JSON.stringify(state.data));
-      const next = state.future.pop();
-      state.data = JSON.parse(next);
-      render();
-    };
-
-    const isLandscape = () => window.matchMedia("(orientation: landscape)").matches;
-
-    /********************
-     * UI構築
-     ********************/
-    const topTabs = document.getElementById("topTabs");
-    const kbdTabs = document.getElementById("kbdTabs");
-    const listsArea = document.getElementById("listsArea");
-
-    function buildTabs(){
-      topTabs.innerHTML = "";
-      for(let i=0;i<LIST_COUNT;i++){
-        const b = document.createElement("div");
-        b.className = "tab" + (state.activeList===i ? " active" : "");
-        b.textContent = "List" + (i+1);
-        b.addEventListener("click", () => {
-          state.activeList = i;
-          // 縦のときは表示列も追従（1列しか出さない）
-          if(!isLandscape()){
-            state.columns = [i, (i+1)%LIST_COUNT, (i+2)%LIST_COUNT];
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(!obj.tabs || !obj.links || !obj.rowsByCol) return null;
+      obj.tabs.forEach(t=>{
+        t.cols.forEach((c, idx)=>{
+          if(!c.rows){
+            c.rows = Array.from({length:(obj.rowsByCol?.[idx]||DEFAULT_ROWS[idx])}, ()=>({label:"", kind:"num", value:null}));
           }
-          render();
         });
-        topTabs.appendChild(b);
-      }
+      });
+      return obj;
+    }catch{ return null; }
+  }
 
-      kbdTabs.innerHTML = "";
-      // キーボード側に「List1-3」みたいなのが欲しい時用（今は表示だけ）
-      for(let j=0;j<3;j++){
-        const li = state.columns[j];
-        const t = document.createElement("div");
-        t.className = "kbdTab" + (j===0 ? " active" : "");
-        t.textContent = "List" + (li+1);
-        // ここは飾り。必要なら「キーボード対象列」を切替にできる。
-        kbdTabs.appendChild(t);
+  function clamp(v,min,max){
+    v = Number(v);
+    if(!Number.isFinite(v)) return min;
+    return Math.max(min, Math.min(max, Math.trunc(v)));
+  }
+
+  function getRows(c){
+    const n = Number(state.rowsByCol?.[c]);
+    return Number.isFinite(n) && n>0 ? n : DEFAULT_ROWS[c];
+  }
+
+  function normalizeRows(col, targetRows){
+    col.rows = Array.isArray(col.rows) ? col.rows.slice(0, targetRows) : [];
+    while(col.rows.length < targetRows) col.rows.push({label:"", kind:"num", value:null});
+  }
+
+  function fmt(n){
+    if(n===null || n===undefined) return "";
+    if(!Number.isFinite(n)) return "Error";
+    const [a,b]=String(n).split(".");
+    const x = Number(a).toLocaleString("ja-JP");
+    return b ? `${x}.${b}` : x;
+  }
+
+  function withinLimit(n){
+    return Number.isFinite(n) && Math.abs(n) <= MAX_ABS;
+  }
+
+  function calcResult(col){
+    let total = 0;
+    for(const r of col.rows){
+      if(r.kind==="num" || r.kind==="sub"){
+        if(Number.isFinite(r.value)) total += r.value;
+      }else if(r.kind==="mul"){
+        if(Number.isFinite(r.value)) total *= r.value;
+      }else if(r.kind==="div"){
+        if(Number.isFinite(r.value) && r.value!==0) total /= r.value;
       }
     }
+    return total;
+  }
 
-    function buildLists(){
-      listsArea.innerHTML = "";
-      const land = isLandscape();
-      listsArea.className = "lists " + (land ? "three" : "one");
+  function pushHistory(action){
+    if(suppressHistory) return;
+    undoStack.push(action);
+    if(undoStack.length > HISTORY_MAX) undoStack.shift();
+    redoStack.length = 0;
+  }
 
-      const showCols = land ? 3 : 1;
-      const cols = state.columns.slice(0, showCols);
+  function applyAction(action, direction){
+    const tab = state.tabs[action.tab];
+    const col = tab.cols[action.col];
+    normalizeRows(col, getRows(action.col));
+    if(action.row >= col.rows.length) return;
+    suppressHistory = true;
+    try{
+      col.rows[action.row] = { ...(direction==="undo" ? action.prev : action.next) };
+      activeTab = action.tab;
+      activeCol = action.col;
+      activeRow = action.row;
+      save();
+      renderAll(true);
+    } finally { suppressHistory = false; }
+  }
+  function undo(){ const a=undoStack.pop(); if(!a) return; applyAction(a,"undo"); redoStack.push(a); }
+  function redo(){ const a=redoStack.pop(); if(!a) return; applyAction(a,"redo"); undoStack.push(a); }
 
-      cols.forEach((listIndex, colIdx) => {
-        const d = state.data[listIndex];
+  // ===== AutoFit =====
+  function fitSpan(span, box, maxPx, minPx){
+    if(!span || !box) return;
 
-        const card = document.createElement("div");
-        card.className = "listCard";
-        card.dataset.listIndex = listIndex;
+    const text = span.textContent ?? "";
+    const prevText = span.dataset.prevText || "";
+    const prevW = Number(span.dataset.prevW || "0");
+    const bw = box.clientWidth;
 
-        const disp = document.createElement("div");
-        disp.className = "display";
-        const op = document.createElement("div");
-        op.className = "opBadge" + (String(d.display).startsWith("-") ? " neg" : "");
-        op.textContent = d.op || "";
-        const val = document.createElement("div");
-        val.className = "dispVal";
-        val.textContent = fmt(d.display);
-        disp.appendChild(op);
-        disp.appendChild(val);
+    if(text === prevText && prevW === bw) return;
 
-        const rows = document.createElement("div");
-        rows.className = "rows";
+    span.dataset.prevText = text;
+    span.dataset.prevW = String(bw);
 
-        // 空でも行高さの揺れを抑えるため：最低1行
-        const rowCount = Math.max(d.rows.length, 10);
-        for(let i=0;i<rowCount;i++){
-          const r = document.createElement("div");
-          r.className = "row";
-          if (i === d.selectedIndex) r.classList.add("selected");
+    const st = getComputedStyle(box);
+    const padL = parseFloat(st.paddingLeft)||0;
+    const padR = parseFloat(st.paddingRight)||0;
+    const avail = Math.max(10, bw - padL - padR);
+    const fontFamily = st.fontFamily;
+    const fontWeight = st.fontWeight;
 
-          const label = document.createElement("div");
-          label.className = "label";
-          const value = document.createElement("div");
-          value.className = "val";
+    const canvas = fitSpan._c || (fitSpan._c = document.createElement("canvas"));
+    const ctx = canvas.getContext("2d");
 
-          if(i < d.rows.length){
-            label.textContent = d.rows[i].label ?? "";
-            const v = String(d.rows[i].val ?? "");
-            value.textContent = fmt(v);
-            if (v.startsWith("-")) value.classList.add("neg");
-          } else {
-            label.textContent = "";
-            value.textContent = "";
+    let lo=minPx, hi=maxPx, best=minPx;
+    while(lo<=hi){
+      const mid=(lo+hi)>>1;
+      ctx.font = `${fontWeight} ${mid}px ${fontFamily}`;
+      const w = ctx.measureText(text).width;
+      if(w<=avail){ best=mid; lo=mid+1; } else hi=mid-1;
+    }
+    span.style.fontSize = best+"px";
+  }
+
+  function cssNum(varName, fallback){
+    const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    const n = Number(String(v).replace("px",""));
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function applyAutoFitVisible(){
+    document.querySelectorAll(".topBox").forEach(box=>{
+      fitSpan(box.querySelector(".topSpan"), box, cssNum("--topMax",46), cssNum("--topMin",18));
+    });
+    document.querySelectorAll(".numLine").forEach(box=>{
+      fitSpan(box.querySelector(".numSpan"), box, cssNum("--numMax",30), cssNum("--numMin",12));
+    });
+    document.querySelectorAll(".key").forEach(k=>{
+      const span = k.querySelector(".kspan");
+      if(!span) return;
+      const isOp  = k.classList.contains("opKey");
+      const isFunc= k.classList.contains("funcKey") || k.classList.contains("undoKey") || k.classList.contains("redoKey") || k.classList.contains("eqKey");
+      const max = isOp ? cssNum("--keyFSop",40) : (isFunc ? cssNum("--keyFSfunc",36) : cssNum("--keyFS",38));
+      fitSpan(span, k, max, 18);
+    });
+  }
+
+  function isPortrait(){
+    return window.matchMedia && window.matchMedia("(orientation:portrait)").matches;
+  }
+
+  function renderTabs(){
+    tabsEl.innerHTML="";
+    state.tabs.forEach((t,i)=>{
+      const d=document.createElement("div");
+      d.className="tab"+(i===activeTab?" active":"");
+      d.textContent = t.name || `List${i+1}`;
+      d.onclick=()=>{
+        activeTab=i; activeCol=0; activeRow=0;
+        entry=""; mode="num"; sign=+1;
+        save(); renderAll(true);
+      };
+      tabsEl.appendChild(d);
+    });
+  }
+
+  function renderColTabs(){
+    colTabsEl.innerHTML="";
+    for(let c=0;c<COLS;c++){
+      const b=document.createElement("div");
+      b.className="colTab"+(c===activeCol ? " active" : "");
+      b.textContent = `List${c+1}`;
+      b.onclick=()=>{
+        activeCol=c;
+        activeRow = Math.min(activeRow, getRows(activeCol)-1);
+        entry=""; mode="num"; sign=+1;
+        save();
+        renderAll(true);
+      };
+      colTabsEl.appendChild(b);
+    }
+  }
+
+  function renderLinks(){
+    linkBar.innerHTML="";
+    state.links.forEach((lnk)=>{
+      const b=document.createElement("div");
+      const has=!!(lnk.url && String(lnk.url).trim());
+      b.className="linkBtn"+(has?"":" disabled");
+      b.textContent = (lnk.label||"").trim();
+      b.title = has ? lnk.url : "未設定（設定で入力）";
+      b.onclick=()=>{
+        if(!has){ openModal(); return; }
+        window.open(String(lnk.url).trim(), "_blank", "noopener,noreferrer");
+      };
+      linkBar.appendChild(b);
+    });
+  }
+
+  function setRow(next){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[activeCol];
+    normalizeRows(col, getRows(activeCol));
+    const before = {...col.rows[activeRow]};
+    const after  = {...before, ...next};
+    if(before.label===after.label && before.kind===after.kind && before.value===after.value) return;
+
+    pushHistory({tab:activeTab, col:activeCol, row:activeRow, prev:before, next:after});
+    col.rows[activeRow] = after;
+    save();
+    renderLists();
+  }
+
+  function blankRow(){ return {label:"", kind:"num", value:null}; }
+
+  function insertRowAt(c, r){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[c];
+    normalizeRows(col, getRows(c));
+
+    for(let i=col.rows.length-1;i>r;i--){
+      col.rows[i] = {...col.rows[i-1]};
+    }
+    col.rows[r] = blankRow();
+
+    activeCol = c;
+    activeRow = r;
+    entry=""; mode="num"; sign=+1;
+    save();
+    renderAll(true);
+  }
+
+  function deleteRowAt(c, r){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[c];
+    normalizeRows(col, getRows(c));
+
+    for(let i=r;i<col.rows.length-1;i++){
+      col.rows[i] = {...col.rows[i+1]};
+    }
+    col.rows[col.rows.length-1] = blankRow();
+
+    activeCol = c;
+    activeRow = Math.min(r, col.rows.length-1);
+    entry=""; mode="num"; sign=+1;
+    save();
+    renderAll(true);
+  }
+
+  function closeAllSwipes(exceptEl=null){
+    document.querySelectorAll(".row.swiped").forEach(el=>{
+      if(el!==exceptEl) el.classList.remove("swiped");
+    });
+  }
+
+  function attachLabelDoubleTap(labEl, c, r){
+    let last = 0;
+    labEl.addEventListener("touchend", (ev)=>{
+      const now = Date.now();
+      if(now - last < 320){
+        ev.preventDefault?.();
+        ev.stopPropagation?.();
+        startLabelEdit(c,r);
+      }
+      last = now;
+    }, {passive:false});
+  }
+
+  function attachSwipeAndLongPress(rowEl, c, r){
+    let sx=0, sy=0;
+    let tracking=false;
+    let longTimer=null;
+    let longFired=false;
+
+    const cancelLong = ()=>{
+      if(longTimer){ clearTimeout(longTimer); longTimer=null; }
+    };
+
+    rowEl.addEventListener("pointerdown",(e)=>{
+      if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
+      try{ rowEl.setPointerCapture?.(e.pointerId); }catch{}
+
+      sx = e.clientX; sy = e.clientY;
+      tracking = true;
+      longFired=false;
+
+      closeAllSwipes(rowEl);
+
+      cancelLong();
+      longTimer = setTimeout(()=>{
+        longFired=true;
+        if(rowEl.classList.contains("swiped")) return;
+        insertRowAt(c, r);
+      }, 600);
+    });
+
+    rowEl.addEventListener("pointermove",(e)=>{
+      if(!tracking || longFired) return;
+
+      const dx = e.clientX - sx;
+      const dy = e.clientY - sy;
+
+      if(Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10){
+        cancelLong();
+        return;
+      }
+      if(Math.abs(dx) > 14) cancelLong();
+
+      if(dx < -34){
+        rowEl.classList.add("swiped");
+      }else if(dx > 22){
+        rowEl.classList.remove("swiped");
+      }
+    });
+
+    const end = ()=>{
+      tracking=false;
+      cancelLong();
+    };
+    rowEl.addEventListener("pointerup", end);
+    rowEl.addEventListener("pointercancel", end);
+    rowEl.addEventListener("lostpointercapture", end);
+  }
+
+  function renderLists(){
+    const renderKey = [
+      activeTab, activeCol, activeRow,
+      state.rowsByCol?.join(","),
+      isPortrait() ? "P":"L",
+      state.savedAt
+    ].join("|");
+
+    if(renderKey === lastRenderKey){
+      requestAnimationFrame(applyAutoFitVisible);
+      return;
+    }
+    lastRenderKey = renderKey;
+
+    listsEl.innerHTML="";
+    const tab = state.tabs[activeTab];
+    for(let c=0;c<COLS;c++) normalizeRows(tab.cols[c], getRows(c));
+
+    const portrait = isPortrait();
+    const colsToShow = portrait ? [activeCol] : [0,1,2];
+
+    if(portrait){
+      ac2.style.display="none";
+      ac3.style.display="none";
+      acRowEl.style.gridTemplateColumns = "1fr";
+    }else{
+      ac2.style.display="";
+      ac3.style.display="";
+      acRowEl.style.gridTemplateColumns = "repeat(3, 1fr)";
+    }
+
+    colsToShow.forEach((c)=>{
+      const col = tab.cols[c];
+      const colEl=document.createElement("div");
+      colEl.className="col";
+
+      const res=calcResult(col);
+      const top=document.createElement("div");
+      top.className="topBox"+(res<0?" neg":"");
+      const topSpan=document.createElement("span");
+      topSpan.className="topSpan";
+      topSpan.textContent = fmt(res) || "0";
+      top.appendChild(topSpan);
+
+      const panel=document.createElement("div");
+      panel.className="panel";
+
+      for(let r=0;r<col.rows.length;r++){
+        const it = col.rows[r];
+
+        const row=document.createElement("div");
+        row.className="row"+(c===activeCol && r===activeRow ? " active":"");
+
+        const rowMain=document.createElement("div");
+        rowMain.className="rowMain";
+
+        rowMain.onclick=()=>{
+          // ✅ラベル編集中は行クリックで再描画させない（iPadの入力事故防止）
+          if(isEditingLabel) return;
+          if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
+          if(row.classList.contains("swiped")){
+            row.classList.remove("swiped");
+            return;
           }
+          activeCol=c; activeRow=r;
+          entry=""; mode="num"; sign=+1;
+          save();
+          renderLists();
+        };
 
-          // 単タップ：選択（グレー枠）
-          r.addEventListener("click", () => {
-            // 空行は無視
-            if(i >= d.rows.length) return;
-            d.selectedIndex = i;
-            render(); // 選択グレーの復活
-          });
+        const delBtn=document.createElement("button");
+        delBtn.className="delBtn";
+        delBtn.type="button";
+        delBtn.textContent="削除";
+        delBtn.onclick=(ev)=>{
+          ev.stopPropagation();
+          deleteRowAt(c, r);
+          closeAllSwipes();
+        };
 
-          // ダブルタップ：ラベル編集（iPadで一番安定する方法＝モーダル入力）
-          attachDoubleTap(r, () => {
-            if(i >= d.rows.length) return;
-            openEditModal(listIndex, i);
-          });
+        const labelLine=document.createElement("div");
+        labelLine.className="labelLine";
 
-          r.appendChild(label);
-          r.appendChild(value);
-          rows.appendChild(r);
+        const lab=document.createElement("div");
+        lab.className="label";
+        const t=(it.label||"");
+        if(!t.trim()){ lab.classList.add("empty"); lab.innerHTML="&nbsp;"; }
+        else lab.textContent=t;
+
+        // ✅編集操作のときはクリックを上に伝播させない（誤選択防止）
+        lab.onclick=(ev)=>ev.stopPropagation();
+
+        // PC: ダブルクリック
+        lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
+        // iOS: ダブルタップ
+        attachLabelDoubleTap(lab, c, r);
+
+        labelLine.append(lab);
+
+        const numLine=document.createElement("div");
+        numLine.className="numLine";
+
+        let show="";
+        if(it.kind==="num"){
+          if(Number.isFinite(it.value)) show = fmt(it.value);
+          if(Number.isFinite(it.value) && it.value<0) numLine.classList.add("neg");
+        }else if(it.kind==="sub"){
+          if(Number.isFinite(it.value)) { show = fmt(it.value); numLine.classList.add("neg"); }
+          else show = "－";
+        }else if(it.kind==="mul"){
+          show = Number.isFinite(it.value) ? `×${fmt(it.value)}` : "×";
+        }else if(it.kind==="div"){
+          show = Number.isFinite(it.value) ? `÷${fmt(it.value)}` : "÷";
         }
 
-        const ac = document.createElement("div");
-        ac.className = "acBar";
-        ac.textContent = "AC";
-        ac.addEventListener("click", () => {
-          pushHistory();
-          d.display = "0";
-          d.input = "0";
-          d.hasDot = false;
-          d.op = "";
-          d.rows = [];
-          d.selectedIndex = -1;
-          render();
+        const numSpan=document.createElement("span");
+        numSpan.className="numSpan";
+        numSpan.textContent=show;
+        numLine.appendChild(numSpan);
+
+        rowMain.append(labelLine,numLine);
+        row.append(rowMain, delBtn);
+        panel.appendChild(row);
+
+        attachSwipeAndLongPress(row, c, r);
+      }
+
+      colEl.append(top,panel);
+      listsEl.appendChild(colEl);
+    });
+
+    listsEl.onclick = (e)=>{
+      const row = e.target.closest(".row");
+      if(!row) closeAllSwipes();
+    };
+
+    // AC：確認なし（常に押せる）
+    ac1.onclick=()=> clearCol( portrait ? activeCol : 0 );
+    ac2.onclick=()=> clearCol(1);
+    ac3.onclick=()=> clearCol(2);
+
+    requestAnimationFrame(applyAutoFitVisible);
+  }
+
+  function clearCol(idx){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[idx];
+    normalizeRows(col, getRows(idx));
+    for(let r=0;r<col.rows.length;r++){
+      const before={...col.rows[r]};
+      const after ={label:before.label, kind:"num", value:null};
+      pushHistory({tab:activeTab, col:idx, row:r, prev:before, next:after});
+      col.rows[r]=after;
+    }
+    entry=""; mode="num"; sign=+1;
+    save(); renderAll(true);
+  }
+
+  function startLabelEdit(c,r){
+    const tab = state.tabs[activeTab];
+    const col = tab.cols[c];
+    normalizeRows(col, getRows(c));
+
+    activeCol=c; activeRow=r;
+    save(); renderLists();
+
+    const colEls = [...listsEl.querySelectorAll(".col")];
+    const colEl = isPortrait() ? colEls[0] : colEls[c];
+    const rowEl = colEl.querySelectorAll(".row")[r];
+    const labEl = rowEl.querySelector(".label");
+
+    rowEl.classList.remove("swiped");
+
+    labEl.classList.remove("empty");
+    if(labEl.innerHTML==="&nbsp;") labEl.textContent="";
+
+    const before={...col.rows[r]};
+    isEditingLabel = true;
+
+    labEl.contentEditable="true";
+    labEl.focus();
+
+    // ✅カーソル末尾へ（iPadで入力が安定）
+    try{
+      const range = document.createRange();
+      range.selectNodeContents(labEl);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }catch{}
+
+    const finish=()=>{
+      labEl.contentEditable="false";
+      const afterLabel=(labEl.textContent||"").trim();
+      if(before.label!==afterLabel){
+        const next={...col.rows[r], label:afterLabel};
+        pushHistory({tab:activeTab, col:c, row:r, prev:before, next});
+        col.rows[r].label=afterLabel;
+        save();
+      }
+      isEditingLabel = false;
+      renderLists();
+    };
+
+    labEl.onkeydown=(e)=>{
+      if(e.key==="Enter"){e.preventDefault(); labEl.blur();}
+      if(e.key==="Escape"){e.preventDefault(); labEl.textContent=before.label||""; labEl.blur();}
+    };
+    labEl.onblur=finish;
+  }
+
+  // ===== 入力（上限1000万） =====
+  function appendDigit(d){
+    const before = entry;
+
+    if(d==="00"){
+      if(entry==="" || entry==="0") return;
+      entry += "00";
+    }else if(d==="."){
+      if(entry==="") entry="0.";
+      else if(entry.includes(".")) return;
+      else entry += ".";
+    }else{
+      if(entry==="0") entry="";
+      entry += d;
+    }
+
+    const n = Number(entry);
+    if(!Number.isFinite(n) || !withinLimit(n)){
+      entry = before;
+      return;
+    }
+
+    if(mode==="num"){
+      setRow({kind:"num", value: sign*n});
+    }else if(mode==="mul"){
+      setRow({kind:"mul", value: n});
+    }else if(mode==="div"){
+      setRow({kind:"div", value: n});
+    }else if(mode==="sub"){
+      setRow({kind:"sub", value: -n});
+    }
+  }
+
+  /* ✅C押下：0表示にしないで真っさらに */
+  function clearAll(){
+    entry=""; mode="num"; sign=+1;
+    setRow({kind:"num", value:null});
+  }
+
+  function toggleNeg(){
+    if(mode!=="num") { mode="num"; entry=""; sign=+1; }
+    sign*=-1;
+    const tab = state.tabs[activeTab];
+    const cur = tab.cols[activeCol].rows[activeRow];
+    if(Number.isFinite(cur.value)){
+      const nv = -cur.value;
+      if(withinLimit(nv)) setRow({kind:"num", value:nv});
+    }
+  }
+
+  function pressAdd(){ entry=""; mode="num"; sign=+1; }
+  function pressSub(){ entry=""; mode="sub"; sign=-1; setRow({kind:"sub", value:null}); }
+  function pressMul(){ entry=""; mode="mul"; setRow({kind:"mul", value:null}); }
+  function pressDiv(){ entry=""; mode="div"; setRow({kind:"div", value:null}); }
+
+  function enter(){
+    entry=""; mode="num"; sign=+1;
+    activeRow = Math.min(getRows(activeCol)-1, activeRow+1);
+    save();
+    renderLists();
+  }
+
+  function handleKey(k){
+    if(k==="UNDO") return undo();
+    if(k==="REDO") return redo();
+    if(/^[0-9]$/.test(k) || k==="00" || k===".") return appendDigit(k);
+    if(k==="C") return clearAll();
+    if(k==="NEG") return toggleNeg();
+    if(k==="ADD") return pressAdd();
+    if(k==="SUB") return pressSub();
+    if(k==="MUL") return pressMul();
+    if(k==="DIV") return pressDiv();
+    if(k==="ENTER") return enter();
+  }
+
+  document.addEventListener("click",(e)=>{
+    const btn=e.target.closest("[data-k]");
+    if(!btn) return;
+    handleKey(btn.getAttribute("data-k"));
+  });
+
+  // ===== modal =====
+  function openModal(){ buildModal(); backdrop.style.display="flex"; }
+  function closeModal(){ backdrop.style.display="none"; }
+
+  gear.onclick=openModal;
+  closeM.onclick=closeModal;
+  cancelM.onclick=closeModal;
+  backdrop.addEventListener("click",(e)=>{ if(e.target===backdrop) closeModal(); });
+
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+
+  function buildModal(){
+    linksForm.innerHTML="";
+    state.links.forEach((lnk,i)=>{
+      const box=document.createElement("div");
+      box.innerHTML = `
+        <div style="border:1px solid #eee;border-radius:14px;padding:10px">
+          <div style="font-weight:1000;margin-bottom:6px">リンク${i+1}</div>
+          <label class="form">ボタン名（空でもOK）</label>
+          <input id="lnk_label_${i}" value="${escapeHtml(lnk.label||"")}">
+          <label class="form">URL</label>
+          <input id="lnk_url_${i}" value="${escapeHtml(lnk.url||"")}" placeholder="https://...">
+        </div>`;
+      linksForm.appendChild(box);
+    });
+
+    tabsForm.innerHTML="";
+    state.tabs.forEach((t,i)=>{
+      const box=document.createElement("div");
+      box.innerHTML = `
+        <div style="border:1px solid #eee;border-radius:14px;padding:10px">
+          <div style="font-weight:1000;margin-bottom:6px">タブ${i+1}</div>
+          <label class="form">タブ名</label>
+          <input id="tab_name_${i}" value="${escapeHtml(t.name||`List${i+1}`)}">
+        </div>`;
+      tabsForm.appendChild(box);
+    });
+
+    rowsForm.innerHTML="";
+    for(let c=0;c<COLS;c++){
+      const cur=getRows(c);
+      const box=document.createElement("div");
+      box.innerHTML = `
+        <div style="border:1px solid #eee;border-radius:14px;padding:10px">
+          <div style="font-weight:1000;margin-bottom:6px">列${c+1}</div>
+          <label class="form">枠数（1〜${MAX_ROWS}）</label>
+          <input id="rows_${c}" type="number" min="1" max="${MAX_ROWS}" value="${cur}">
+        </div>`;
+      rowsForm.appendChild(box);
+    }
+
+    $("wipeTab").onclick=()=>{
+      const t=state.tabs[activeTab];
+      t.cols.forEach((c, ci)=>{
+        normalizeRows(c, getRows(ci));
+        c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
+      });
+      entry=""; mode="num"; sign=+1;
+      save(); renderAll(true);
+    };
+
+    $("wipeAll").onclick=()=>{
+      state.tabs.forEach(t=>{
+        t.cols.forEach((c, ci)=>{
+          normalizeRows(c, getRows(ci));
+          c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
         });
+      });
+      entry=""; mode="num"; sign=+1;
+      save(); renderAll(true);
+    };
+  }
 
-        card.appendChild(disp);
-        card.appendChild(rows);
-        card.appendChild(ac);
+  saveM.onclick=()=>{
+    for(let i=0;i<4;i++){
+      const label = document.getElementById(`lnk_label_${i}`).value;
+      const url = document.getElementById(`lnk_url_${i}`).value.trim();
+      state.links[i] = { label, url };
+    }
+    for(let i=0;i<TAB_COUNT;i++){
+      const nm = document.getElementById(`tab_name_${i}`).value.trim() || `List${i+1}`;
+      state.tabs[i].name = nm;
+    }
 
-        listsArea.appendChild(card);
+    const newRows=[];
+    for(let c=0;c<COLS;c++){
+      const v = Number(document.getElementById(`rows_${c}`).value);
+      const n = Number.isFinite(v) ? Math.max(1, Math.min(MAX_ROWS, Math.trunc(v))) : DEFAULT_ROWS[c];
+      newRows.push(n);
+    }
+    state.rowsByCol=newRows;
+
+    state.tabs.forEach(t=>{
+      for(let c=0;c<COLS;c++) normalizeRows(t.cols[c], getRows(c));
+    });
+
+    activeRow = clamp(activeRow, 0, getRows(activeCol)-1);
+
+    save();
+    renderAll(true);
+    closeModal();
+  };
+
+  function renderAll(force=false){
+    if(force){
+      lastRenderKey = "";
+      document.querySelectorAll("[data-prev-text]").forEach(el=>{
+        delete el.dataset.prevText;
+        delete el.dataset.prevW;
       });
     }
+    renderTabs();
+    renderColTabs();
+    renderLinks();
+    renderLists();
+    requestAnimationFrame(applyAutoFitVisible);
+  }
 
-    /********************
-     * ダブルタップ（ズーム暴発しにくい実装）
-     ********************/
-    function attachDoubleTap(el, onDouble){
-      let lastT = 0;
-      el.addEventListener("touchend", (e) => {
-        const now = Date.now();
-        const dt = now - lastT;
-        if (dt > 0 && dt < 320){
-          e.preventDefault();
-          onDouble();
-          lastT = 0;
-        } else {
-          lastT = now;
-        }
-      }, {passive:false});
+  let resizeTimer = null;
+  window.addEventListener("resize", ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(()=>{
+      renderColTabs();
+      renderAll(true);
+    }, 120);
+  });
 
-      // マウス（PC）
-      el.addEventListener("dblclick", (e) => {
-        e.preventDefault();
-        onDouble();
-      });
-    }
+  document.addEventListener("pointerdown",(e)=>{
+    if(e.target.closest(".row")) return;
+    closeAllSwipes();
+  }, {passive:true});
 
-    /********************
-     * 文字入力（モーダル）
-     ********************/
-    const modalBack = document.getElementById("modalBack");
-    const modalTitle = document.getElementById("modalTitle");
-    const modalInput = document.getElementById("modalInput");
-    const modalOk = document.getElementById("modalOk");
-    const modalCancel = document.getElementById("modalCancel");
-
-    let editTarget = { listIndex:-1, rowIndex:-1 };
-
-    function openEditModal(listIndex, rowIndex){
-      const d = state.data[listIndex];
-      const row = d.rows[rowIndex];
-      editTarget = { listIndex, rowIndex };
-
-      modalTitle.textContent = `List${listIndex+1}：行${rowIndex+1} ラベル編集`;
-      modalInput.value = row.label ?? "";
-      modalBack.style.display = "flex";
-
-      // iPadで確実にキーボード出す
-      setTimeout(() => {
-        modalInput.focus();
-        modalInput.setSelectionRange(modalInput.value.length, modalInput.value.length);
-      }, 50);
-    }
-
-    function closeModal(){
-      modalBack.style.display = "none";
-      editTarget = { listIndex:-1, rowIndex:-1 };
-      // フォーカスを外してレイアウト崩れを防止
-      modalInput.blur();
-    }
-
-    modalCancel.addEventListener("click", closeModal);
-    modalBack.addEventListener("click", (e) => {
-      if (e.target === modalBack) closeModal();
-    });
-
-    modalOk.addEventListener("click", () => {
-      const {listIndex,rowIndex} = editTarget;
-      if (listIndex < 0) return closeModal();
-      pushHistory();
-      state.data[listIndex].rows[rowIndex].label = modalInput.value.trim();
-      closeModal();
-      render();
-    });
-
-    /********************
-     * 電卓入力（＋表記・演算子表記復活）
-     ********************/
-    const keyMap = {
-      "add":"+",
-      "sub":"−",
-      "mul":"×",
-      "div":"÷"
-    };
-
-    function currentListIndex(){
-      // 縦の時：activeListに入れる
-      if(!isLandscape()) return state.activeList;
-      // 横の時：キーボードは「一番左の列（columns[0]）」に入れる（今の動きに近い）
-      return state.columns[0];
-    }
-
-    function setOp(listIndex, op){
-      const d = state.data[listIndex];
-      d.op = op;              // ← これが「＋押した時の表記」
-      d.display = d.input;    // 表示は入力
-    }
-
-    function applyOp(listIndex, op){
-      const d = state.data[listIndex];
-      // ここはシンプルに「入力を1行として積む」挙動（あなたの運用に合わせやすい）
-      // opを押したら行を追加し、op表示を更新する
-      const num = d.input === "" ? "0" : d.input;
-      d.rows.unshift({ label:"", val:num });
-      d.selectedIndex = 0;
-      setOp(listIndex, op);
-      d.input = "0";
-      d.hasDot = false;
-      d.display = "0";
-    }
-
-    function onKey(k){
-      const li = currentListIndex();
-      const d = state.data[li];
-
-      // 押すたびに履歴積むと重いので「編集系だけ」
-      const needHist = ["c","undo","redo","eq","add","sub","mul","div","pm"].includes(k) === false
-        ? false
-        : true;
-
-      if (k === "undo") return undo();
-      if (k === "redo") return redo();
-
-      if (k === "c"){
-        pushHistory();
-        d.input = "0"; d.display="0"; d.op=""; d.hasDot=false;
-        render();
-        return;
-      }
-
-      if (k === "pm"){
-        pushHistory();
-        if (d.input.startsWith("-")) d.input = d.input.slice(1);
-        else if (d.input !== "0") d.input = "-" + d.input;
-        d.display = d.input;
-        render();
-        return;
-      }
-
-      if (k === "."){
-        if (!d.hasDot){
-          if (d.input === "" || d.input === "0") d.input = "0.";
-          else d.input += ".";
-          d.hasDot = true;
-          d.display = d.input;
-          render();
-        }
-        return;
-      }
-
-      if (k === "add" || k === "sub" || k === "mul" || k === "div"){
-        pushHistory();
-        applyOp(li, keyMap[k]);   // ← ＋/−/×/÷ 押下時の表記を確実に出す
-        render();
-        return;
-      }
-
-      if (k === "eq"){
-        pushHistory();
-        // ＝は「入力を確定して1行追加」扱い
-        const num = d.input === "" ? "0" : d.input;
-        d.rows.unshift({ label:"", val:num });
-        d.selectedIndex = 0;
-        d.op = "";               // ＝後は演算子表示消す
-        d.input = "0";
-        d.hasDot = false;
-        d.display = "0";
-        render();
-        return;
-      }
-
-      // 数字
-      if (/^\d+$/.test(k)){
-        if (d.input === "0" && !d.hasDot) d.input = k;
-        else d.input += k;
-        d.display = d.input;
-        render();
-      }
-    }
-
-    document.getElementById("kbdGrid").addEventListener("click", (e) => {
-      const btn = e.target.closest(".btn");
-      if(!btn) return;
-      const k = btn.dataset.k;
-      onKey(k);
-    });
-
-    /********************
-     * レンダリング
-     ********************/
-    function render(){
-      buildTabs();
-      buildLists();
-    }
-
-    // 初期：列割り当て（横で3列見たい想定）
-    state.columns = [0,1,2];
-
-    // 画面回転でレイアウトを自動最適化
-    window.addEventListener("resize", () => {
-      // 横→縦で1列になったとき、表示対象をactiveListに追従
-      if(!isLandscape()){
-        state.columns = [state.activeList, (state.activeList+1)%LIST_COUNT, (state.activeList+2)%LIST_COUNT];
-      }
-      render();
-    });
-
-    // 初期描画
-    render();
-  </script>
+  save();
+  renderAll(true);
+})();
+</script>
 </body>
 </html>
