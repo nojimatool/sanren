@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
 
   <!-- PWA設定 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -25,32 +25,40 @@
     --bd:rgba(0,0,0,.18);
     --neg:#d92d20;
 
-    /* 画面を目一杯使う */
-    --outerPad: 6px;
-    --appPad: 10px;
-
-    --calcW: 300px;
+    /* ✅右電卓を少し大きめに（キー配置は変えない） */
+    --calcW: clamp(320px, 34vw, 460px);
     --colMinW: 260px;
 
-    /* ★横画面で枠数を稼ぐ（行を低く） */
-    --rowH: 44px;
-    --labelFS: 13px;
+    /* ✅行高さ：JSが上書きする（デフォは保険） */
+    --rowH: 52px;
+
+    /* ✅キー高さ：JSが上書きする（デフォは保険） */
+    --keyH: 78px;
+
+    /* 調整用（JSで参照） */
+    --rowHminP: 34;  /* portrait 最小 */
+    --rowHmaxP: 52;  /* portrait 最大 */
+    --rowHminL: 42;  /* landscape 最小 */
+    --rowHmaxL: 56;  /* landscape 最大 */
+    --keyHmin: 54;
+    --keyHmax: 92;
+
+    --labelFS: 14px;
 
     /* 数字表示 */
-    --numMax: 28px;
+    --numMax: 30px;
     --numMin: 12px;
 
     /* 合計 */
-    --topMax: 44px;
+    --topMax: 46px;
     --topMin: 18px;
 
-    /* ===== キー（ACが必ず入るよう、横は少し低め） ===== */
-    --gap: 9px;
-    --keyFS: 40px;
-    --keyFSop: 42px;
+    /* ===== キー ===== */
+    --gap: 10px;
+    --keyFS: 38px;
+    --keyFSop: 40px;
     --keyFSfunc: 36px;
     --keyRadius: 14px;
-    --keyH: clamp(56px, 7.0vh, 82px);
 
     /* ===== ボタン配色 ===== */
     --btnGrey1: rgba(255,255,255,.98);
@@ -73,47 +81,36 @@
     --delBg: #e11d48;
   }
 
-  /* 縦：1列表示（列切替） */
+  /* 縦：オリジナル寄せ（1列表示＋列切替） */
   @media (orientation:portrait){
     :root{
-      --calcW: 360px;
+      --calcW: 340px;
       --colMinW: 360px;
-
-      /* 縦は行を少し大きめでOK */
-      --rowH: 50px;
-      --labelFS: 14px;
-
-      --keyH: clamp(62px, 7.6vh, 92px);
-      --gap: 10px;
-      --keyFS: 42px;
-      --keyFSop: 44px;
+      --gap: 9px;
+      --keyFS: 40px;
+      --keyFSop: 42px;
       --keyFSfunc: 38px;
-
-      --outerPad: 8px;
-      --appPad: 12px;
     }
   }
 
   *{ box-sizing:border-box; }
-
   html, body{
     margin:0;
     padding:0;
     height:100%;
     overflow:hidden;
     overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
   }
-
   body{ width:100%; }
 
   .frame{
     height:100%;
     overflow:hidden;
-    padding:var(--outerPad);
+    padding:10px;
+    max-width:1360px;
     margin:0 auto;
-    max-width: none; /* ★横iPadで左右に余白が出にくい */
   }
-
   @supports (height: 100dvh){
     .frame{ height:100dvh; }
   }
@@ -125,8 +122,8 @@
     height:100%;
     min-height:0;
     background:linear-gradient(180deg,var(--wood1),var(--wood2));
-    border-radius:22px;
-    padding:var(--appPad);
+    border-radius:20px;
+    padding:12px;
     display:flex;
     flex-direction:column;
     gap:10px;
@@ -165,6 +162,7 @@
     box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 3px 10px rgba(0,0,0,.10);
     font-size:20px;font-weight:900;
   }
+
   .linkBar{display:flex;gap:8px;align-items:center}
   .linkBtn{
     width:64px;height:42px;border-radius:10px;
@@ -204,7 +202,7 @@
     .lists{grid-template-columns:repeat(1, minmax(var(--colMinW), 1fr));}
   }
 
-  /* ★ACが押し出されない：固定 */
+  /* ✅ACは必ず表示＆押し出されない */
   .acRow{
     display:grid;
     grid-template-columns:repeat(3,1fr);
@@ -233,7 +231,7 @@
     background:rgba(255,255,255,.50);
     border:1px solid rgba(0,0,0,.20);
     border-radius:14px;
-    padding:6px 10px;
+    padding:8px 10px;
     display:flex;align-items:center;justify-content:flex-end;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
     font-weight:1100;
@@ -253,7 +251,6 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  /* ===== row（スワイプ削除対応） ===== */
   .row{
     border-bottom:1px solid #eaeaea;
     min-height:var(--rowH);
@@ -266,19 +263,19 @@
   }
   .row:last-child{border-bottom:none}
 
-  /* ★選択中：薄いグレー */
+  /* ✅選択中を薄いグレー */
   .row.active{
-    background:rgba(0,0,0,.06);
-    outline:2px solid rgba(0,0,0,.10);
-    outline-offset:-2px;
+    background:rgba(0,0,0,.05);
+    outline:3px solid rgba(0,0,0,.10);
+    outline-offset:-3px;
   }
 
   .rowMain{
     width:100%;
-    padding:6px 10px;
+    padding:8px 10px;
     min-height:var(--rowH);
     display:flex;flex-direction:column;justify-content:space-between;
-    gap:3px;
+    gap:4px;
     background:var(--panel);
     position:relative;
     z-index:2;
@@ -328,22 +325,22 @@
     white-space:nowrap;
     overflow:hidden;
     color:#111;
-    min-height:22px;
+    min-height:24px;
   }
   .numLine.neg{color:var(--neg)}
   .numSpan{display:inline-block;max-width:100%}
 
   .acBtn{
-    height:48px;border-radius:14px;
+    height:50px;border-radius:14px;
     background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
     border:1px solid rgba(0,0,0,.22);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
-    font-weight:1100;font-size:30px;color:#1f3a8a;
+    font-weight:1100;font-size:32px;color:#1f3a8a;
     cursor:pointer;user-select:none;
   }
 
-  /* ===== 右：電卓（ACが入るように高さ調整） ===== */
+  /* ===== 右：電卓（配置は絶対に変えない） ===== */
   .calc{
     min-height:0;
     background:var(--glass);
@@ -351,7 +348,8 @@
     border-radius:16px;
     padding:12px;
     display:grid;
-    grid-template-rows: auto 1fr auto; /* colTabs / padNum / padOps */
+    /* ✅ colTabs / padNum / padOps の3段。padNum/padOpsを均等配分 */
+    grid-template-rows: auto 1fr 1fr;
     gap:10px;
     overflow:hidden;
   }
@@ -497,6 +495,8 @@
     <div class="grid">
       <div class="leftWrap">
         <div class="lists" id="lists"></div>
+
+        <!-- ✅ACは常に表示 -->
         <div class="acRow" id="acRow">
           <div class="acBtn" id="ac1">AC</div>
           <div class="acBtn" id="ac2">AC</div>
@@ -504,7 +504,7 @@
         </div>
       </div>
 
-      <div class="calc">
+      <div class="calc" id="calc">
         <div class="colTabs" id="colTabs"></div>
 
         <!-- 上：テンキー（配置変更しない） -->
@@ -626,7 +626,7 @@
 
   // 入力状態
   let entry = "";
-  let mode  = "add";   // "add" | "mul" | "div" | "sub"
+  let mode  = "num";   // "num" | "mul" | "div" | "sub"
   let sign  = +1;
 
   // state
@@ -645,7 +645,7 @@
       tabs:Array.from({length:TAB_COUNT}, (_,i)=>({
         name:`List${i+1}`,
         cols:Array.from({length:COLS}, (__,c)=>({
-          rows: Array.from({length:DEFAULT_ROWS[c]}, ()=>({label:"", kind:"add", value:null}))
+          rows: Array.from({length:DEFAULT_ROWS[c]}, ()=>({label:"", kind:"num", value:null}))
         }))
       })),
       links:Array.from({length:4}, ()=>({label:"", url:""})),
@@ -674,13 +674,8 @@
       obj.tabs.forEach(t=>{
         t.cols.forEach((c, idx)=>{
           if(!c.rows){
-            c.rows = Array.from({length:(obj.rowsByCol?.[idx]||DEFAULT_ROWS[idx])}, ()=>({label:"", kind:"add", value:null}));
+            c.rows = Array.from({length:(obj.rowsByCol?.[idx]||DEFAULT_ROWS[idx])}, ()=>({label:"", kind:"num", value:null}));
           }
-          // 既存データ互換（kindが無い/num でも動く）
-          c.rows.forEach(r=>{
-            if(!r.kind) r.kind = "add";
-            if(r.kind==="num") r.kind="add";
-          });
         });
       });
       return obj;
@@ -700,11 +695,7 @@
 
   function normalizeRows(col, targetRows){
     col.rows = Array.isArray(col.rows) ? col.rows.slice(0, targetRows) : [];
-    while(col.rows.length < targetRows) col.rows.push({label:"", kind:"add", value:null});
-    col.rows.forEach(r=>{
-      if(!r.kind) r.kind="add";
-      if(r.kind==="num") r.kind="add";
-    });
+    while(col.rows.length < targetRows) col.rows.push({label:"", kind:"num", value:null});
   }
 
   function fmt(n){
@@ -722,7 +713,7 @@
   function calcResult(col){
     let total = 0;
     for(const r of col.rows){
-      if(r.kind==="add" || r.kind==="sub"){
+      if(r.kind==="num" || r.kind==="sub"){
         if(Number.isFinite(r.value)) total += r.value;
       }else if(r.kind==="mul"){
         if(Number.isFinite(r.value)) total *= r.value;
@@ -800,23 +791,89 @@
 
   function applyAutoFitVisible(){
     document.querySelectorAll(".topBox").forEach(box=>{
-      fitSpan(box.querySelector(".topSpan"), box, cssNum("--topMax",44), cssNum("--topMin",18));
+      fitSpan(box.querySelector(".topSpan"), box, cssNum("--topMax",46), cssNum("--topMin",18));
     });
     document.querySelectorAll(".numLine").forEach(box=>{
-      fitSpan(box.querySelector(".numSpan"), box, cssNum("--numMax",28), cssNum("--numMin",12));
+      fitSpan(box.querySelector(".numSpan"), box, cssNum("--numMax",30), cssNum("--numMin",12));
     });
     document.querySelectorAll(".key").forEach(k=>{
       const span = k.querySelector(".kspan");
       if(!span) return;
       const isOp  = k.classList.contains("opKey");
       const isFunc= k.classList.contains("funcKey") || k.classList.contains("undoKey") || k.classList.contains("redoKey") || k.classList.contains("eqKey");
-      const max = isOp ? cssNum("--keyFSop",42) : (isFunc ? cssNum("--keyFSfunc",36) : cssNum("--keyFS",40));
+      const max = isOp ? cssNum("--keyFSop",40) : (isFunc ? cssNum("--keyFSfunc",36) : cssNum("--keyFS",38));
       fitSpan(span, k, max, 18);
     });
   }
 
   function isPortrait(){
     return window.matchMedia && window.matchMedia("(orientation:portrait)").matches;
+  }
+
+  /* ✅今回の要件：ACまで必ず1画面に収める（縦横）＋ 横は7〜8行が見えるくらい */
+  function adjustDynamicSizes(){
+    const root = document.documentElement;
+
+    // ---- 左（行高さ） ----
+    const anyCol = listsEl.querySelector(".col");
+    const anyPanel = listsEl.querySelector(".panel");
+    if(anyCol && anyPanel){
+      const panelH = anyPanel.clientHeight;
+      if(panelH > 0){
+        if(isPortrait()){
+          const minH = cssNum("--rowHminP", 34);
+          const maxH = cssNum("--rowHmaxP", 52);
+
+          // 縦は「ACが入る範囲で最大表示」＝行をできるだけ詰める
+          // ただし小さくなりすぎ防止で minH を下限にする
+          let rowH = minH;
+
+          // 余裕があれば少し上げる（見た目が潰れすぎないように）
+          // “最低でも10行相当の表示余地”を想定（足りない端末は minH のまま）
+          const rowsAtMin = Math.max(1, Math.floor(panelH / minH));
+          const denom = Math.max(10, rowsAtMin);
+          rowH = Math.floor(panelH / denom);
+          rowH = Math.max(minH, Math.min(maxH, rowH));
+
+          root.style.setProperty("--rowH", rowH + "px");
+        }else{
+          const minH = cssNum("--rowHminL", 42);
+          const maxH = cssNum("--rowHmaxL", 56);
+
+          // 横は「7〜8行」狙い（8行基準。足りない端末は小さくなる）
+          const targetRows = 8;
+          let rowH = Math.floor(panelH / targetRows);
+          rowH = Math.max(minH, Math.min(maxH, rowH));
+
+          root.style.setProperty("--rowH", rowH + "px");
+        }
+      }
+    }
+
+    // ---- 右（キー高さ） ----
+    const calc = document.getElementById("calc");
+    if(calc){
+      const gap = cssNum("--gap", 10);
+      const keyMin = cssNum("--keyHmin", 54);
+      const keyMax = cssNum("--keyHmax", 92);
+
+      const colTabs = document.getElementById("colTabs");
+      const colTabsH = (colTabs && getComputedStyle(colTabs).display !== "none") ? colTabs.offsetHeight : 0;
+
+      // calc の内側（clientHeight）から colTabs 分を引く
+      const calcH = calc.clientHeight;
+      const avail = Math.max(0, calcH - colTabsH);
+
+      // キーは 7段（padNum=4段, padOps=3段）
+      const totalRows = 7;
+      // gap は段間：padNum内3 + padOps内2 + padNum/padOps間1 = 6
+      const totalGaps = 6;
+
+      let keyH = Math.floor((avail - gap * totalGaps - 6 /*微調整*/ ) / totalRows);
+      keyH = Math.max(keyMin, Math.min(keyMax, keyH));
+
+      root.style.setProperty("--keyH", keyH + "px");
+    }
   }
 
   function renderTabs(){
@@ -827,7 +884,7 @@
       d.textContent = t.name || `List${i+1}`;
       d.onclick=()=>{
         activeTab=i; activeCol=0; activeRow=0;
-        entry=""; mode="add"; sign=+1;
+        entry=""; mode="num"; sign=+1;
         save(); renderAll(true);
       };
       tabsEl.appendChild(d);
@@ -843,7 +900,7 @@
       b.onclick=()=>{
         activeCol=c;
         activeRow = Math.min(activeRow, getRows(activeCol)-1);
-        entry=""; mode="add"; sign=+1;
+        entry=""; mode="num"; sign=+1;
         save();
         renderAll(true);
       };
@@ -881,8 +938,7 @@
     renderLists();
   }
 
-  // ===== 挿入/削除（列内固定行数のまま） =====
-  function blankRow(){ return {label:"", kind:"add", value:null}; }
+  function blankRow(){ return {label:"", kind:"num", value:null}; }
 
   function insertRowAt(c, r){
     const tab = state.tabs[activeTab];
@@ -896,7 +952,7 @@
 
     activeCol = c;
     activeRow = r;
-    entry=""; mode="add"; sign=+1;
+    entry=""; mode="num"; sign=+1;
     save();
     renderAll(true);
   }
@@ -913,30 +969,40 @@
 
     activeCol = c;
     activeRow = Math.min(r, col.rows.length-1);
-    entry=""; mode="add"; sign=+1;
+    entry=""; mode="num"; sign=+1;
     save();
     renderAll(true);
   }
 
-  // ===== スワイプ削除：スライドした時だけ表示 =====
   function closeAllSwipes(exceptEl=null){
     document.querySelectorAll(".row.swiped").forEach(el=>{
       if(el!==exceptEl) el.classList.remove("swiped");
     });
   }
 
-  // ★「行のどこを叩いても」ダブルタップで編集（数字ゾーンでもOK）
-  function attachRowGestures(rowEl, c, r){
-    let sx=0, sy=0;
-    let moved=false;
-    let tracking=false;
+  /* ダブルタップで編集（既存のまま：ラベルをダブルタップで編集） */
+  function attachLabelDoubleTap(labEl, c, r){
+    let last = 0;
 
+    const fire = (ev)=>{
+      const now = Date.now();
+      if(now - last < 350){
+        ev.preventDefault?.();
+        ev.stopPropagation?.();
+        startLabelEdit(c,r);
+      }
+      last = now;
+    };
+
+    labEl.addEventListener("touchend", fire, {passive:false});
+    labEl.addEventListener("click", fire, {passive:false});
+  }
+
+  function attachSwipeAndLongPress(rowEl, c, r){
+    let sx=0, sy=0;
+    let tracking=false;
     let longTimer=null;
     let longFired=false;
-
-    // double tap
-    let lastTapAt = 0;
-    let lastTapKey = "";
 
     const cancelLong = ()=>{
       if(longTimer){ clearTimeout(longTimer); longTimer=null; }
@@ -944,11 +1010,9 @@
 
     rowEl.addEventListener("pointerdown",(e)=>{
       if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
-
       try{ rowEl.setPointerCapture?.(e.pointerId); }catch{}
 
       sx = e.clientX; sy = e.clientY;
-      moved=false;
       tracking = true;
       longFired=false;
 
@@ -958,9 +1022,9 @@
       longTimer = setTimeout(()=>{
         longFired=true;
         if(rowEl.classList.contains("swiped")) return;
-        insertRowAt(c, r); // 長押し＝挿入（行ずらし）
+        insertRowAt(c, r);
       }, 600);
-    }, {passive:true});
+    });
 
     rowEl.addEventListener("pointermove",(e)=>{
       if(!tracking || longFired) return;
@@ -968,63 +1032,26 @@
       const dx = e.clientX - sx;
       const dy = e.clientY - sy;
 
-      // 縦が強いならスクロール優先
       if(Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10){
-        moved = true;
         cancelLong();
         return;
       }
-
-      if(Math.abs(dx) > 14) { moved = true; cancelLong(); }
+      if(Math.abs(dx) > 14) cancelLong();
 
       if(dx < -34){
         rowEl.classList.add("swiped");
       }else if(dx > 22){
         rowEl.classList.remove("swiped");
       }
-    }, {passive:true});
+    });
 
-    const end = (e)=>{
+    const end = ()=>{
       tracking=false;
       cancelLong();
-      if(longFired) return;
-
-      // ほぼ動いてない＝タップ扱い
-      const dx = (e.clientX ?? sx) - sx;
-      const dy = (e.clientY ?? sy) - sy;
-      const isTap = !moved && Math.abs(dx) < 10 && Math.abs(dy) < 10;
-
-      if(!isTap) return;
-
-      // swiped状態なら、まず閉じる
-      if(rowEl.classList.contains("swiped")){
-        rowEl.classList.remove("swiped");
-        return;
-      }
-
-      const now = Date.now();
-      const key = `${activeTab}:${c}:${r}`;
-      if(now - lastTapAt < 320 && lastTapKey === key){
-        // double tap → 編集
-        startLabelEdit(c, r);
-        lastTapAt = 0;
-        lastTapKey = "";
-        return;
-      }
-
-      // single tap → 選択
-      lastTapAt = now;
-      lastTapKey = key;
-
-      activeCol=c; activeRow=r;
-      entry=""; mode="add"; sign=+1;
-      save();
-      renderLists();
     };
-
-    rowEl.addEventListener("pointerup", end, {passive:true});
-    rowEl.addEventListener("pointercancel", end, {passive:true});
-    rowEl.addEventListener("lostpointercapture", end, {passive:true});
+    rowEl.addEventListener("pointerup", end);
+    rowEl.addEventListener("pointercancel", end);
+    rowEl.addEventListener("lostpointercapture", end);
   }
 
   function renderLists(){
@@ -1036,7 +1063,7 @@
     ].join("|");
 
     if(renderKey === lastRenderKey){
-      requestAnimationFrame(applyAutoFitVisible);
+      requestAnimationFrame(()=>{ adjustDynamicSizes(); applyAutoFitVisible(); });
       return;
     }
     lastRenderKey = renderKey;
@@ -1083,6 +1110,18 @@
         const rowMain=document.createElement("div");
         rowMain.className="rowMain";
 
+        rowMain.onclick=()=>{
+          if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
+          if(row.classList.contains("swiped")){
+            row.classList.remove("swiped");
+            return;
+          }
+          activeCol=c; activeRow=r;
+          entry=""; mode="num"; sign=+1;
+          save();
+          renderLists();
+        };
+
         const delBtn=document.createElement("button");
         delBtn.className="delBtn";
         delBtn.type="button";
@@ -1102,15 +1141,16 @@
         if(!t.trim()){ lab.classList.add("empty"); lab.innerHTML="&nbsp;"; }
         else lab.textContent=t;
 
+        lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
+        attachLabelDoubleTap(lab, c, r);
         labelLine.append(lab);
 
         const numLine=document.createElement("div");
         numLine.className="numLine";
 
         let show="";
-        if(it.kind==="add"){
-          if(Number.isFinite(it.value)) show = `＋${fmt(it.value)}`;
-          else show = "＋";
+        if(it.kind==="num"){
+          if(Number.isFinite(it.value)) show = fmt(it.value);
           if(Number.isFinite(it.value) && it.value<0) numLine.classList.add("neg");
         }else if(it.kind==="sub"){
           if(Number.isFinite(it.value)) { show = fmt(it.value); numLine.classList.add("neg"); }
@@ -1130,25 +1170,23 @@
         row.append(rowMain, delBtn);
         panel.appendChild(row);
 
-        attachRowGestures(row, c, r);
+        attachSwipeAndLongPress(row, c, r);
       }
 
       colEl.append(top,panel);
       listsEl.appendChild(colEl);
     });
 
-    // パネル外タップでswipe閉じる
     listsEl.onclick = (e)=>{
       const row = e.target.closest(".row");
       if(!row) closeAllSwipes();
     };
 
-    // AC：確認なし（必ず表示）
     ac1.onclick=()=> clearCol( portrait ? activeCol : 0 );
     ac2.onclick=()=> clearCol(1);
     ac3.onclick=()=> clearCol(2);
 
-    requestAnimationFrame(applyAutoFitVisible);
+    requestAnimationFrame(()=>{ adjustDynamicSizes(); applyAutoFitVisible(); });
   }
 
   function clearCol(idx){
@@ -1157,11 +1195,11 @@
     normalizeRows(col, getRows(idx));
     for(let r=0;r<col.rows.length;r++){
       const before={...col.rows[r]};
-      const after ={label:before.label, kind:"add", value:null};
+      const after ={label:before.label, kind:"num", value:null};
       pushHistory({tab:activeTab, col:idx, row:r, prev:before, next:after});
       col.rows[r]=after;
     }
-    entry=""; mode="add"; sign=+1;
+    entry=""; mode="num"; sign=+1;
     save(); renderAll(true);
   }
 
@@ -1228,8 +1266,8 @@
       return;
     }
 
-    if(mode==="add"){
-      setRow({kind:"add", value: sign*n});
+    if(mode==="num"){
+      setRow({kind:"num", value: sign*n});
     }else if(mode==="mul"){
       setRow({kind:"mul", value: n});
     }else if(mode==="div"){
@@ -1239,33 +1277,29 @@
     }
   }
 
-  // ★C：0にせず「真っさら」に戻す
   function clearAll(){
-    entry=""; mode="add"; sign=+1;
-    setRow({kind:"add", value:null});
+    entry=""; mode="num"; sign=+1;
+    setRow({kind:"num", value:null});
   }
 
   function toggleNeg(){
-    // ±は数値入力（add）に戻して符号反転
-    if(mode!=="add") { mode="add"; entry=""; sign=+1; }
+    if(mode!=="num") { mode="num"; entry=""; sign=+1; }
     sign*=-1;
-
     const tab = state.tabs[activeTab];
     const cur = tab.cols[activeCol].rows[activeRow];
     if(Number.isFinite(cur.value)){
       const nv = -cur.value;
-      if(withinLimit(nv)) setRow({kind:"add", value:nv});
+      if(withinLimit(nv)) setRow({kind:"num", value:nv});
     }
   }
 
-  // ★＋：数字なしでも表示（＋だけ出す）
-  function pressAdd(){ entry=""; mode="add"; sign=+1; setRow({kind:"add", value:null}); }
+  function pressAdd(){ entry=""; mode="num"; sign=+1; }
   function pressSub(){ entry=""; mode="sub"; sign=-1; setRow({kind:"sub", value:null}); }
   function pressMul(){ entry=""; mode="mul"; setRow({kind:"mul", value:null}); }
   function pressDiv(){ entry=""; mode="div"; setRow({kind:"div", value:null}); }
 
   function enter(){
-    entry=""; mode="add"; sign=+1;
+    entry=""; mode="num"; sign=+1;
     activeRow = Math.min(getRows(activeCol)-1, activeRow+1);
     save();
     renderLists();
@@ -1347,9 +1381,9 @@
       const t=state.tabs[activeTab];
       t.cols.forEach((c, ci)=>{
         normalizeRows(c, getRows(ci));
-        c.rows = c.rows.map(r=>({label:r.label, kind:"add", value:null}));
+        c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
       });
-      entry=""; mode="add"; sign=+1;
+      entry=""; mode="num"; sign=+1;
       save(); renderAll(true);
     };
 
@@ -1357,10 +1391,10 @@
       state.tabs.forEach(t=>{
         t.cols.forEach((c, ci)=>{
           normalizeRows(c, getRows(ci));
-          c.rows = c.rows.map(r=>({label:r.label, kind:"add", value:null}));
+          c.rows = c.rows.map(r=>({label:r.label, kind:"num", value:null}));
         });
       });
-      entry=""; mode="add"; sign=+1;
+      entry=""; mode="num"; sign=+1;
       save(); renderAll(true);
     };
   }
@@ -1407,20 +1441,21 @@
     renderColTabs();
     renderLinks();
     renderLists();
-    requestAnimationFrame(applyAutoFitVisible);
+    requestAnimationFrame(()=>{ adjustDynamicSizes(); applyAutoFitVisible(); });
   }
 
-  // resize（回転含む）をdebounce
   let resizeTimer = null;
   window.addEventListener("resize", ()=>{
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(()=>{
       renderColTabs();
       renderAll(true);
-    }, 120);
+    }, 140);
+  });
+  window.addEventListener("orientationchange", ()=>{
+    setTimeout(()=>renderAll(true), 220);
   });
 
-  // どこか触ったらswipe閉じる（設定を触る時も）
   document.addEventListener("pointerdown",(e)=>{
     if(e.target.closest(".row")) return;
     closeAllSwipes();
