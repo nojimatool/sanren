@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <!-- ✅ズーム不要：ダブルタップズーム等を抑止（文字入力の邪魔を減らす） -->
+  <!-- ✅ズーム不要：ダブルタップズーム等を抑止 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
 
   <!-- PWA設定 -->
@@ -26,9 +26,14 @@
     --bd:rgba(0,0,0,.18);
     --neg:#d92d20;
 
-    /* ✅右電卓を少し大きめに（キー配置は変えない） */
-    --calcW: clamp(320px, 34vw, 460px);
-    --colMinW: 260px;
+    /* ===== ここが “全iPadで勝手に最適” の核 =====
+       - 横：キーボード(右)を少し細く
+       - 列(左)を広げる
+       - 端末幅で自動調整（iPadモデルで分岐しない）
+    */
+    --calcW: clamp(300px, 28vw, 380px); /* ✅横の時キーボード幅を狭める */
+    --colMinW: 240px;                  /* ✅列は広めに */
+    --safeB: env(safe-area-inset-bottom, 0px);
 
     --rowH: 52px;
     --labelFS: 14px;
@@ -48,8 +53,8 @@
     --keyFSfunc: 36px;
     --keyRadius: 14px;
 
-    /* ✅keyHはJSで横画面時に “縦ピッタリ” に上書きされる */
-    --keyH: clamp(66px, 8.4vh, 92px);
+    /* ✅キー高さ：縦方向に “なるべく目一杯” 使う（でも上限あり） */
+    --keyH: clamp(64px, 8.6vh, 92px);
 
     /* ===== ボタン配色 ===== */
     --btnGrey1: rgba(255,255,255,.98);
@@ -74,25 +79,24 @@
     --delBg: #e11d48;
   }
 
-  /* ✅横画面：右(電卓)を狭く、左(列)を広く */
-  @media (orientation:landscape){
-    :root{
-      --calcW: clamp(240px, 26vw, 340px);
-      --colMinW: 280px;
-    }
-  }
-
-  /* 縦：オリジナル寄せ（1列表示＋列切替） */
+  /* ✅縦：1列表示＋列切替（“ACまで1枚”を優先） */
   @media (orientation:portrait){
     :root{
       --calcW: 340px;
-      --colMinW: 360px;
+      --colMinW: 340px;
       --rowH: 50px;
-      --keyH: clamp(64px, 7.6vh, 92px);
       --gap: 9px;
       --keyFS: 40px;
       --keyFSop: 42px;
       --keyFSfunc: 38px;
+      --keyH: clamp(62px, 7.8vh, 90px);
+    }
+  }
+
+  /* ✅高さが厳しい端末だけ（mini等）キーを少しだけ縮める */
+  @media (max-height: 720px){
+    :root{
+      --keyH: clamp(56px, 7.2vh, 86px);
     }
   }
 
@@ -104,21 +108,18 @@
     overflow:hidden;
     overscroll-behavior: none;
     -webkit-text-size-adjust: 100%;
+    background:linear-gradient(180deg,var(--wood1),var(--wood2));
   }
-  body{ width:100%; }
 
+  /* ✅Safari/PWAの “下の余白” を物理的に潰す（固定レイアウト） */
   .frame{
-    height:100%;
-    overflow:hidden;
+    position:fixed;
+    inset:0;
     padding:10px;
+    padding-bottom: calc(10px + var(--safeB));
     max-width:1360px;
     margin:0 auto;
-  }
-  @supports (height: 100dvh){
-    .frame{ height:100dvh; }
-  }
-  @supports (-webkit-touch-callout: none){
-    .frame{ height:-webkit-fill-available; }
+    overflow:hidden;
   }
 
   .app{
@@ -192,6 +193,7 @@
     flex-direction:column;
     gap:10px;
     overflow:hidden;
+    flex:1;
   }
 
   .lists{
@@ -266,7 +268,7 @@
   }
   .row:last-child{border-bottom:none}
 
-  /* ✅選択中を薄いグレー（ここが消えてたら絶対ここで復活） */
+  /* ✅選択中を薄いグレー（復活） */
   .row.active{
     background:rgba(0,0,0,.05);
     outline:3px solid rgba(0,0,0,.10);
@@ -341,9 +343,10 @@
     display:grid;place-items:center;
     font-weight:1100;font-size:32px;color:#1f3a8a;
     cursor:pointer;user-select:none;
+    width:100%;
   }
 
-  /* ===== 右：電卓（配置は絶対に変えない） ===== */
+  /* ===== 右：電卓（配置は変えない） ===== */
   .calc{
     min-height:0;
     background:var(--glass);
@@ -351,9 +354,17 @@
     border-radius:16px;
     padding:12px;
     display:grid;
-    grid-template-rows: auto auto 1fr;
+    /* ✅キーボードを縦に目一杯使う */
+    grid-template-rows: auto 1fr 1fr;
     gap:10px;
     overflow:hidden;
+  }
+
+  /* 横画面：さらに縦を詰めて “キーが縦に伸びる” */
+  @media (orientation:landscape){
+    .calc{
+      grid-template-rows: auto 1fr 1fr;
+    }
   }
 
   .colTabs{
@@ -388,17 +399,22 @@
     display:grid;
     grid-template-columns: repeat(3, 1fr);
     gap:var(--gap);
-    align-content:start;
+    align-content:stretch;
+    grid-auto-rows: 1fr; /* ✅縦いっぱいに伸びる */
+    min-height:0;
   }
   .padOps{
     display:grid;
     grid-template-columns: repeat(3, 1fr);
     gap:var(--gap);
-    align-content:start;
+    align-content:stretch;
+    grid-auto-rows: 1fr; /* ✅縦いっぱいに伸びる */
+    min-height:0;
   }
 
   .key{
-    height:var(--keyH);
+    height:100%; /* ✅親の 1fr を使い切る */
+    min-height:var(--keyH); /* ✅ただし最低高さは確保 */
     border-radius:var(--keyRadius);
     background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
     border:1px solid rgba(0,0,0,.22);
@@ -751,7 +767,7 @@
   function undo(){ const a=undoStack.pop(); if(!a) return; applyAction(a,"undo"); redoStack.push(a); }
   function redo(){ const a=redoStack.pop(); if(!a) return; applyAction(a,"redo"); undoStack.push(a); }
 
-  // ===== AutoFit（重いので “変わった要素だけ”） =====
+  // ===== AutoFit =====
   function fitSpan(span, box, maxPx, minPx){
     if(!span || !box) return;
 
@@ -810,39 +826,6 @@
 
   function isPortrait(){
     return window.matchMedia && window.matchMedia("(orientation:portrait)").matches;
-  }
-
-  /* ✅横画面：キーを “縦いっぱい” に埋める（右の空き潰し） */
-  function applyLandscapeKeyboardFill(){
-    if (isPortrait()) return;
-
-    const calc = document.querySelector(".calc");
-    if(!calc) return;
-
-    const calcH = calc.clientHeight;
-
-    const colTabs = document.getElementById("colTabs");
-    const colTabsH = (colTabs && getComputedStyle(colTabs).display !== "none") ? colTabs.offsetHeight : 0;
-
-    const st = getComputedStyle(calc);
-    const padT = parseFloat(st.paddingTop)||0;
-    const padB = parseFloat(st.paddingBottom)||0;
-    const gap  = parseFloat(st.rowGap)||0;
-
-    const gap2 = cssNum("--gap", 10);
-
-    // 4行(数字) + 3行(演算) = 7行
-    const ROWS = 7;
-
-    const calcRowGaps = (colTabsH ? 2 : 1) * gap;
-    const innerGaps   = (3 + 2) * gap2;
-
-    const avail = calcH - colTabsH - padT - padB - calcRowGaps - innerGaps;
-
-    let keyH = Math.floor(avail / ROWS);
-    keyH = Math.max(54, keyH);
-
-    document.documentElement.style.setProperty("--keyH", keyH + "px");
   }
 
   function renderTabs(){
@@ -949,23 +932,21 @@
     });
   }
 
-  /* ✅ダブルタップで編集（iOSの dblclick 不安定対策）
-     - 長押しは挿入なので触らない */
+  /* ✅ラベル編集の安定化（iPadで “ダブルタップ後に入力しにくい” 対策）
+     - ダブルタップ判定は touchend のみ（click併用だと二重判定しやすい）
+     - 編集開始時にカーソル末尾へ
+  */
   function attachLabelDoubleTap(labEl, c, r){
     let last = 0;
-
-    const fire = (ev)=>{
+    labEl.addEventListener("touchend", (ev)=>{
       const now = Date.now();
-      if(now - last < 350){
+      if(now - last < 320){
         ev.preventDefault?.();
         ev.stopPropagation?.();
         startLabelEdit(c,r);
       }
       last = now;
-    };
-
-    labEl.addEventListener("touchend", fire, {passive:false});
-    labEl.addEventListener("click", fire, {passive:false});
+    }, {passive:false});
   }
 
   function attachSwipeAndLongPress(rowEl, c, r){
@@ -1199,6 +1180,16 @@
     labEl.contentEditable="true";
     labEl.focus();
 
+    // ✅カーソル末尾へ（iPadで入力が安定）
+    try{
+      const range = document.createRange();
+      range.selectNodeContents(labEl);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }catch{}
+
     const finish=()=>{
       labEl.contentEditable="false";
       const afterLabel=(labEl.textContent||"").trim();
@@ -1412,10 +1403,6 @@
         delete el.dataset.prevW;
       });
     }
-
-    // ✅横画面は先に keyH を決める（空き無し）
-    applyLandscapeKeyboardFill();
-
     renderTabs();
     renderColTabs();
     renderLinks();
@@ -1427,8 +1414,6 @@
   window.addEventListener("resize", ()=>{
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(()=>{
-      // ✅回転/サイズ変更時：縦埋め計算→再描画
-      applyLandscapeKeyboardFill();
       renderColTabs();
       renderAll(true);
     }, 120);
@@ -1439,7 +1424,6 @@
     closeAllSwipes();
   }, {passive:true});
 
-  // 初期描画
   save();
   renderAll(true);
 })();
