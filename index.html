@@ -641,8 +641,14 @@
     and (orientation: landscape){
 
     :root{
-      --calcW: 320px;   /* 右（電卓）幅を固定して被り防止 */
-      --colMinW: 190px; /* 左3列の最小幅を少し下げる */
+      /* ✅右（電卓）をさらに小さく → 左が広がる */
+      --calcW: 280px;
+
+      /* ✅左の最小幅を少し上げて「入力列が潰れにくい」 */
+      --colMinW: 210px;
+
+      /* 少しだけ詰めてスペースを捻出 */
+      --gap: 8px;
     }
 
     .grid{
@@ -652,6 +658,7 @@
 
     .lists{
       grid-template-columns: repeat(3, minmax(var(--colMinW), 1fr));
+      gap:10px;
     }
   }
   </style>
@@ -918,6 +925,36 @@
     const [a,b]=String(n).split(".");
     const x = Number(a).toLocaleString("ja-JP");
     return b ? `${x}.${b}` : x;
+  }
+
+  // ✅入力中の文字列(entry)を「そのまま見せる」用（0. / 0.00 を崩さない）
+  function fmtEntry(){
+    if(entry === "") return "";
+
+    // sign/mode による符号
+    const prefix = (mode==="sub" || sign<0) ? "-" : "";
+
+    // entry 自体は符号なし想定。整形は「小数点以下を保持」する。
+    let s = String(entry);
+
+    // 末尾 '.' も表示したいので split はそのまま
+    const parts = s.split(".");
+    let intPart = parts[0] ?? "";
+    const decPart = parts.length > 1 ? (parts[1] ?? "") : null;
+
+    // 整数部の先頭ゼロは「0」だけ残す
+    intPart = intPart.replace(/^0+(?=\d)/, "");
+    if(intPart === "") intPart = "0";
+
+    // カンマ付け
+    const intNum = Number(intPart);
+    const intFmt = Number.isFinite(intNum) ? intNum.toLocaleString("ja-JP") : intPart;
+
+    if(decPart === null){
+      return prefix + intFmt;
+    }
+    // decPart は空でもOK（"0." を出すため）
+    return prefix + intFmt + "." + decPart;
   }
 
   function withinLimit(n){
@@ -1394,8 +1431,18 @@
 
         let show="";
         if(it.kind==="num"){
-          if(Number.isFinite(it.value)) show = fmt(it.value);
-          if(Number.isFinite(it.value) && it.value<0) numLine.classList.add("neg");
+          // ✅ここが「入力中の 0. / 0.00 を崩さない」本体
+          if(c===activeCol && r===activeRow && entry!==""){
+            show = fmtEntry(); // 🔥入力中は entry（文字列）を優先表示
+          }else if(Number.isFinite(it.value)){
+            show = fmt(it.value);
+          }
+          // 符号色は「確定値」を優先、入力中は prefix を見て判定
+          if(c===activeCol && r===activeRow && entry!==""){
+            if(fmtEntry().startsWith("-")) numLine.classList.add("neg");
+          }else if(Number.isFinite(it.value) && it.value<0){
+            numLine.classList.add("neg");
+          }
         }else if(it.kind==="add"){
           show = Number.isFinite(it.value) ? fmt(it.value) : "＋";
         }else if(it.kind==="sub"){
@@ -1474,6 +1521,8 @@
     }
 
     const n = Number(entry);
+    // "0." は Number("0.") で 0 になるけど、表示は entry が担当するのでOK。
+    // ただし数値としては範囲チェックを通す必要がある。
     if(!Number.isFinite(n) || !withinLimit(n)){
       entry = before;
       return;
@@ -1503,6 +1552,9 @@
     if(Number.isFinite(cur.value)){
       const nv = -cur.value;
       if(withinLimit(nv)) setRow({kind:"num", value:nv});
+    }else{
+      // ✅未確定でも符号が変わったら画面更新（entry表示が変わる）
+      renderLists();
     }
   }
 
