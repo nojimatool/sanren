@@ -26,14 +26,18 @@
     --bd:rgba(0,0,0,.18);
     --neg:#d92d20;
 
-    /* ===== ここが “全iPadで勝手に最適” の核 ===== */
-    --calcW: clamp(300px, 28vw, 380px);
-    --colMinW: 240px;
-    --safeB: env(safe-area-inset-bottom, 0px);
+    /* ===== 8行表示のターゲット ===== */
+    --rowsVisible: 8;
+    --rowH: 52px;        /* JSで自動調整 */
+    --rowHMin: 44px;     /* 潰れ防止：これ以上は詰めない */
+    --rowHMax: 52px;
 
-    --rowH: 52px;
+    /* ✅詰めた時に一緒に変える（JSが上書き） */
+    --rowPadV: 8px;
+    --rowPadH: 10px;
+    --rowGap: 4px;
 
-    /* ✅ラベル：少し強く（オリジナル寄り） */
+    /* ✅ラベル：読みやすさ優先（JSが上書き） */
     --labelFS: 15px;
 
     /* 数字表示 */
@@ -43,6 +47,11 @@
     /* 合計 */
     --topMax: 46px;
     --topMin: 18px;
+
+    /* ===== ここが “全iPadで勝手に最適” の核 ===== */
+    --calcW: clamp(300px, 28vw, 380px);
+    --colMinW: 240px;
+    --safeB: env(safe-area-inset-bottom, 0px);
 
     /* ===== キー ===== */
     --gap: 10px;
@@ -82,7 +91,6 @@
     :root{
       --calcW: 340px;
       --colMinW: 340px;
-      --rowH: 50px;
       --gap: 9px;
       --keyFS: 40px;
       --keyFSop: 42px;
@@ -130,8 +138,18 @@
     overflow:hidden;
   }
 
-  .topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  /* ✅上が2段になって縦を食わないようにする（8行に効く） */
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .topbar::-webkit-scrollbar{ display:none; }
+
+  .tabs{display:flex;gap:8px;align-items:center;flex:0 0 auto}
   .tab{
     min-width:92px;
     padding:8px 10px;
@@ -152,7 +170,13 @@
     background:linear-gradient(180deg, #2e6cff, #0b3a8a);
     color:#fff;
   }
-  .topRight{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .topRight{
+    margin-left:auto;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex:0 0 auto;
+  }
 
   .gear{
     width:52px;height:42px;border-radius:12px;
@@ -228,7 +252,7 @@
     overflow:hidden;
   }
 
-  /* ✅合計：少し引き締めて読みやすく（色味は維持） */
+  /* ✅合計 */
   .topBox{
     background:rgba(255,255,255,.72);
     border:1px solid rgba(0,0,0,.26);
@@ -265,7 +289,6 @@
   }
   .row:last-child{border-bottom:none}
 
-  /* ✅選択中を薄いグレー */
   .row.active{
     outline:3px solid rgba(0,0,0,.10);
     outline-offset:-3px;
@@ -276,11 +299,12 @@
 
   .rowMain{
     width:100%;
-    /* ✅情報密度UP（オリジナル寄り） */
-    padding:8px 10px;
+    padding: var(--rowPadV) var(--rowPadH);
     min-height:var(--rowH);
-    display:flex;flex-direction:column;justify-content:space-between;
-    gap:4px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    gap: var(--rowGap);
     background:var(--panel);
     position:relative;
     z-index:2;
@@ -288,7 +312,6 @@
     will-change:transform;
   }
 
-  /* ✅ゼブラ：区切り重視だけど“めちゃ薄く” */
   .row:nth-child(even) .rowMain{ background:rgba(0,0,0,.010); }
   .row.active:nth-child(even) .rowMain{ background:rgba(0,0,0,.05); }
 
@@ -313,13 +336,21 @@
   }
   .row.swiped .delBtn{ opacity:1; pointer-events:auto; }
 
-  .labelLine{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:18px;}
+  .labelLine{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    min-height:18px;
+  }
   .label{
     font-size:var(--labelFS);
     font-weight:1000;
     color:#0b1220;
     letter-spacing:.2px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
     flex:1;
   }
   .label.empty{color:transparent}
@@ -328,20 +359,22 @@
   }
 
   .numLine{
-    display:flex;align-items:flex-end;justify-content:flex-end;
+    display:flex;
+    align-items:flex-end;
+    justify-content:flex-end;
     font-weight:1100;
     font-variant-numeric: tabular-nums;
     white-space:nowrap;
     overflow:hidden;
     color:#111;
-    min-height:24px;
+    min-height:22px;
   }
   .numLine.neg{color:var(--neg)}
   .numSpan{display:inline-block;max-width:100%}
 
   .acBtn{
     height:50px;border-radius:14px;
-    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(230,235,245,.95));
     border:1px solid rgba(0,0,0,.22);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
@@ -350,7 +383,7 @@
     width:100%;
   }
 
-  /* ===== 右：電卓（配置は変えない） ===== */
+  /* ===== 右：電卓 ===== */
   .calc{
     min-height:0;
     background:var(--glass);
@@ -412,7 +445,7 @@
     height:100%;
     min-height:var(--keyH);
     border-radius:var(--keyRadius);
-    background:linear-gradient(180deg, var(--btnGrey1), var(--btnGrey2));
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(230,235,245,.95));
     border:1px solid rgba(0,0,0,.22);
     box-shadow:inset 0 2px 0 rgba(255,255,255,.65), 0 2px 6px rgba(0,0,0,.10);
     display:grid;place-items:center;
@@ -424,9 +457,8 @@
 
   .numKey{ font-size:var(--keyFS); color:#111; }
 
-  /* ✅演算キー：＋が消える/薄い対策 */
   .opKey{
-    background:linear-gradient(180deg, var(--btnOp1), var(--btnOp2));
+    background:linear-gradient(180deg, rgba(60,120,230,.95), rgba(30,80,180,.95));
     border-color:rgba(0,0,0,.22);
     font-size:var(--keyFSop);
     color:#fff;
@@ -434,19 +466,19 @@
   }
 
   .funcKey{
-    background:linear-gradient(180deg, var(--btnFunc1), var(--btnFunc2));
+    background:linear-gradient(180deg, rgba(10,45,120,.85), rgba(5,25,70,.90));
     border-color:rgba(0,0,0,.35);
     font-size:var(--keyFSfunc);
     color:#fff;
   }
   .undoKey{
-    background:linear-gradient(180deg, var(--btnUndo1), var(--btnUndo2));
+    background:linear-gradient(180deg, rgba(255,150,40,.95), rgba(220,110,20,.95));
     border-color:rgba(0,0,0,.35);
     color:#fff;
     font-size:var(--keyFSfunc);
   }
   .redoKey{
-    background:linear-gradient(180deg, var(--btnRedo1), var(--btnRedo2));
+    background:linear-gradient(180deg, rgba(255,180,70,.95), rgba(230,120,30,.95));
     border-color:rgba(0,0,0,.35);
     color:#fff;
     font-size:var(--keyFSfunc);
@@ -737,7 +769,6 @@
   function calcResult(col){
     let total = 0;
     for(const r of col.rows){
-      // ✅ADD(＋表示用)も合算扱い（valueが入ったらnumで上書きされる想定）
       if(r.kind==="num" || r.kind==="sub" || r.kind==="add"){
         if(Number.isFinite(r.value)) total += r.value;
       }else if(r.kind==="mul"){
@@ -833,6 +864,42 @@
 
   function isPortrait(){
     return window.matchMedia && window.matchMedia("(orientation:portrait)").matches;
+  }
+
+  // ✅8行を「見た目が潰れない範囲で」詰める（詰めたら padding/font も一緒に調整）
+  function fitRowHeightToTarget(){
+    const panel = listsEl.querySelector(".panel");
+    if(!panel) return;
+
+    const root = document.documentElement;
+    const target = cssNum("--rowsVisible", 8);
+
+    const panelH = panel.clientHeight;
+    if(panelH <= 0) return;
+
+    let rh = Math.floor(panelH / target);
+
+    const min = cssNum("--rowHMin", 44);
+    const max = cssNum("--rowHMax", 52);
+    rh = Math.max(min, Math.min(max, rh));
+
+    root.style.setProperty("--rowH", rh + "px");
+
+    if(rh <= 46){
+      root.style.setProperty("--rowPadV", "6px");
+      root.style.setProperty("--rowPadH", "10px");
+      root.style.setProperty("--rowGap", "3px");
+      root.style.setProperty("--labelFS", "14px");
+      root.style.setProperty("--numMax", "28px");
+      root.style.setProperty("--numMin", "12px");
+    }else{
+      root.style.setProperty("--rowPadV", "8px");
+      root.style.setProperty("--rowPadH", "10px");
+      root.style.setProperty("--rowGap", "4px");
+      root.style.setProperty("--labelFS", "15px");
+      root.style.setProperty("--numMax", "30px");
+      root.style.setProperty("--numMin", "12px");
+    }
   }
 
   function renderTabs(){
@@ -1065,7 +1132,6 @@
         rowMain.className="rowMain";
 
         rowMain.onclick=()=>{
-          // ✅ラベル編集中は行クリックで再描画させない（iPadの入力事故防止）
           if(isEditingLabel) return;
           if(document.activeElement?.getAttribute?.("contenteditable")==="true") return;
           if(row.classList.contains("swiped")){
@@ -1097,12 +1163,8 @@
         if(!t.trim()){ lab.classList.add("empty"); lab.innerHTML="&nbsp;"; }
         else lab.textContent=t;
 
-        // ✅編集操作のときはクリックを上に伝播させない（誤選択防止）
         lab.onclick=(ev)=>ev.stopPropagation();
-
-        // PC: ダブルクリック
         lab.ondblclick=(ev)=>{ ev.stopPropagation(); startLabelEdit(c,r); };
-        // iOS: ダブルタップ
         attachLabelDoubleTap(lab, c, r);
 
         labelLine.append(lab);
@@ -1115,7 +1177,6 @@
           if(Number.isFinite(it.value)) show = fmt(it.value);
           if(Number.isFinite(it.value) && it.value<0) numLine.classList.add("neg");
         }else if(it.kind==="add"){
-          // ✅＋を「数字の欄」に表示
           show = Number.isFinite(it.value) ? fmt(it.value) : "＋";
         }else if(it.kind==="sub"){
           if(Number.isFinite(it.value)) { show = fmt(it.value); numLine.classList.add("neg"); }
@@ -1152,24 +1213,25 @@
     ac2.onclick=()=> clearCol(1);
     ac3.onclick=()=> clearCol(2);
 
-    requestAnimationFrame(applyAutoFitVisible);
+    // ✅8行フィット → 潰れ防止連動 → その後にAutoFit
+    requestAnimationFrame(()=>{
+      fitRowHeightToTarget();
+      applyAutoFitVisible();
+    });
   }
 
-  // ✅ACで「その列の文字(ラベル)も全部消す」
   function clearCol(idx){
     const tab = state.tabs[activeTab];
     const col = tab.cols[idx];
     normalizeRows(col, getRows(idx));
     for(let r=0;r<col.rows.length;r++){
       const before={...col.rows[r]};
-      const after ={label:"", kind:"num", value:null}; // ←ラベルも消す
+      const after ={label:"", kind:"num", value:null};
       pushHistory({tab:activeTab, col:idx, row:r, prev:before, next:after});
       col.rows[r]=after;
     }
-    // 入力中のバッファも消す
     entry=""; mode="num"; sign=+1;
 
-    // その列が今選択中なら、見た目も即安定
     if(activeCol === idx){
       activeRow = clamp(activeRow, 0, getRows(activeCol)-1);
     }
@@ -1201,7 +1263,6 @@
     labEl.contentEditable="true";
     labEl.focus();
 
-    // ✅カーソル末尾へ（iPadで入力が安定）
     try{
       const range = document.createRange();
       range.selectNodeContents(labEl);
@@ -1231,7 +1292,6 @@
     labEl.onblur=finish;
   }
 
-  // ===== 入力（上限1000万） =====
   function appendDigit(d){
     const before = entry;
 
@@ -1254,7 +1314,7 @@
     }
 
     if(mode==="num"){
-      setRow({kind:"num", value: sign*n}); // ADDの後でも、入力したらnumで上書き
+      setRow({kind:"num", value: sign*n});
     }else if(mode==="mul"){
       setRow({kind:"mul", value: n});
     }else if(mode==="div"){
@@ -1264,7 +1324,6 @@
     }
   }
 
-  /* ✅C押下：0表示にしないで真っさらに */
   function clearAll(){
     entry=""; mode="num"; sign=+1;
     setRow({kind:"num", value:null});
@@ -1281,7 +1340,6 @@
     }
   }
 
-  // ✅＋を「数字欄」に出す
   function pressAdd(){
     entry=""; mode="num"; sign=+1;
     setRow({kind:"add", value:null});
@@ -1316,7 +1374,6 @@
     handleKey(btn.getAttribute("data-k"));
   });
 
-  // ===== modal =====
   function openModal(){ buildModal(); backdrop.style.display="flex"; }
   function closeModal(){ backdrop.style.display="none"; }
 
@@ -1373,7 +1430,7 @@
       const t=state.tabs[activeTab];
       t.cols.forEach((c, ci)=>{
         normalizeRows(c, getRows(ci));
-        c.rows = c.rows.map(()=>({label:"", kind:"num", value:null})); // ←ラベルも消す
+        c.rows = c.rows.map(()=>({label:"", kind:"num", value:null}));
       });
       entry=""; mode="num"; sign=+1;
       save(); renderAll(true);
@@ -1383,7 +1440,7 @@
       state.tabs.forEach(t=>{
         t.cols.forEach((c, ci)=>{
           normalizeRows(c, getRows(ci));
-          c.rows = c.rows.map(()=>({label:"", kind:"num", value:null})); // ←ラベルも消す
+          c.rows = c.rows.map(()=>({label:"", kind:"num", value:null}));
         });
       });
       entry=""; mode="num"; sign=+1;
@@ -1433,7 +1490,6 @@
     renderColTabs();
     renderLinks();
     renderLists();
-    requestAnimationFrame(applyAutoFitVisible);
   }
 
   let resizeTimer = null;
