@@ -1145,13 +1145,19 @@
     });
   }
 
+  // ✅ここが修正版（0. / 0.0 / 0.00 の表示更新を保証）
   function setRow(next){
     const tab = state.tabs[activeTab];
     const col = tab.cols[activeCol];
     normalizeRows(col, getRows(activeCol));
     const before = {...col.rows[activeRow]};
     const after  = {...before, ...next};
-    if(before.label===after.label && before.kind===after.kind && before.value===after.value) return;
+
+    // ✅数値として同じでも、entry表示を更新したいので再描画
+    if(before.label===after.label && before.kind===after.kind && before.value===after.value){
+      renderLists();
+      return;
+    }
 
     pushHistory({tab:activeTab, col:activeCol, row:activeRow, prev:before, next:after});
     col.rows[activeRow] = after;
@@ -1334,7 +1340,12 @@
       activeTab, activeCol, activeRow,
       state.rowsByCol?.join(","),
       isPortrait() ? "P":"L",
-      state.savedAt
+      state.savedAt,
+
+      // ✅ここが修正版（entry変化だけでも再描画される）
+      entry,
+      mode,
+      sign
     ].join("|");
 
     if(renderKey === lastRenderKey){
@@ -1431,13 +1442,14 @@
 
         let show="";
         if(it.kind==="num"){
-          // ✅ここが「入力中の 0. / 0.00 を崩さない」本体
+          // ✅入力中の 0. / 0.00 を崩さない
           if(c===activeCol && r===activeRow && entry!==""){
-            show = fmtEntry(); // 🔥入力中は entry（文字列）を優先表示
+            show = fmtEntry();
           }else if(Number.isFinite(it.value)){
             show = fmt(it.value);
           }
-          // 符号色は「確定値」を優先、入力中は prefix を見て判定
+
+          // 色：入力中は fmtEntry() の符号で判定
           if(c===activeCol && r===activeRow && entry!==""){
             if(fmtEntry().startsWith("-")) numLine.classList.add("neg");
           }else if(Number.isFinite(it.value) && it.value<0){
@@ -1522,7 +1534,6 @@
 
     const n = Number(entry);
     // "0." は Number("0.") で 0 になるけど、表示は entry が担当するのでOK。
-    // ただし数値としては範囲チェックを通す必要がある。
     if(!Number.isFinite(n) || !withinLimit(n)){
       entry = before;
       return;
