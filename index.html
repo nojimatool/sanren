@@ -1272,6 +1272,9 @@
     // 選択も合わせる
     activeCol = c;
     activeRow = r;
+    entry = "";
+    mode  = "num";
+    sign  = +1;
     save();
     renderLists();
 
@@ -1296,6 +1299,9 @@
   }
 
   function closeLabelModal(){
+    entry = "";
+    mode  = "num";
+    sign  = +1;
     editBackdrop.style.display = "none";
     editingTarget = null;
     isEditingLabel = false;
