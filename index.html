@@ -1576,12 +1576,25 @@
   }
 
   function pressAdd(){
+    jumpNextRowIfHasNumber();   // ✅追加：数字があるなら次の行へ
     entry=""; mode="num"; sign=+1;
     setRow({kind:"add", value:null});
   }
-  function pressSub(){ entry=""; mode="sub"; sign=-1; setRow({kind:"sub", value:null}); }
-  function pressMul(){ entry=""; mode="mul"; setRow({kind:"mul", value:null}); }
-  function pressDiv(){ entry=""; mode="div"; setRow({kind:"div", value:null}); }
+  function pressSub(){
+    jumpNextRowIfHasNumber();   // ✅追加
+    entry=""; mode="sub"; sign=-1;
+    setRow({kind:"sub", value:null});
+  }
+  function pressMul(){
+    jumpNextRowIfHasNumber();   // ✅追加
+    entry=""; mode="mul"; sign=+1;
+    setRow({kind:"mul", value:null});
+  }
+  function pressDiv(){
+    jumpNextRowIfHasNumber();   // ✅追加
+    entry=""; mode="div"; sign=+1;
+    setRow({kind:"div", value:null});
+  }
 
   function enter(){
     entry=""; mode="num"; sign=+1;
@@ -1589,7 +1602,22 @@
     save();
     renderLists();
   }
+  function moveNextRow(){
+  entry=""; mode="num"; sign=+1; // ✅追加：状態をリセット
+  activeRow = Math.min(getRows(activeCol)-1, activeRow+1);
+  save();
+  renderLists();
+}
+  function jumpNextRowIfHasNumber(){
+  const tab = state.tabs[activeTab];
+  const cur = tab.cols[activeCol].rows[activeRow];
 
+  if(entry !== "" || (cur.kind==="num" && Number.isFinite(cur.value))){
+    moveNextRow();
+    return true;
+  }
+    return false;
+  }
   function handleKey(k){
     if(k==="UNDO") return undo();
     if(k==="REDO") return redo();
@@ -1747,3 +1775,5 @@
 </script>
 </body>
 </html>
+
+これであってるかな？
